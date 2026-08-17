@@ -2,7 +2,7 @@
 
 Use this file when Openboost is supplied to an AI agent together with a real OpenCart project/task.
 
-The user should not have to explain where OpenCart controllers, languages, models, OCMOD, or translations live. Openboost provides that operating model; the agent must still inspect the real target repository before making assumptions.
+The user should not have to explain where OpenCart controllers, languages, models, services, OCMOD, translations, themes, or architecture live. Openboost provides that operating model; the agent must still inspect the real target repository before making assumptions.
 
 ## Phase 0 — Identify the two repositories correctly
 
@@ -19,9 +19,11 @@ Read:
 
 1. `AGENTS.md`
 2. `skills/README.md`
-3. task-relevant skill files
-4. relevant architecture references
-5. `docs/OPEN_CART_LIVING_KNOWLEDGE.md`
+3. `skills/opencart-project-analysis/SKILL.md`
+4. `skills/opencart-architecture-map/SKILL.md` for substantial target projects
+5. other task-relevant skill files
+6. relevant architecture references
+7. `docs/OPEN_CART_LIVING_KNOWLEDGE.md`
 
 Then inspect the target repository.
 
@@ -31,7 +33,7 @@ For a non-trivial task, send a short concrete update before editing.
 
 Default OpenCart wording can be adapted from:
 
-> Спочатку аналізую сам OpenCart-проєкт: визначаю точну версію OpenCart і PHP, структуру admin/catalog/system, активні мови та спосіб перекладів, тему/TPL/Twig, існуючий модуль або реалізацію, OCMOD/events і таблиці/міграції. Після цього визначу найменшу правильну точку зміни й тільки тоді редагуватиму код.
+> Спочатку аналізую сам OpenCart-проєкт: визначаю точну версію OpenCart і PHP, структуру admin/catalog/system, перевіряю наявну карту архітектури, Core/Services і спільні абстракції, активні мови та спосіб перекладів, тему/TPL/Twig, існуючий модуль або реалізацію, OCMOD/events і таблиці/міграції. Якщо документа архітектури немає — створю його по фактичному коду. Після цього визначу найменшу правильну точку зміни й тільки тоді редагуватиму код.
 
 This is not ceremonial. Perform the inspection described.
 
@@ -55,6 +57,8 @@ events
 custom DB tables/settings
 install/update/uninstall lifecycle
 cron/jobs
+shared Core/Services/libraries
+existing architecture documentation
 ```
 
 Use `skills/opencart-project-analysis/SKILL.md`.
@@ -69,13 +73,74 @@ If target evidence says:
 - PHP >= 7.4/8.x → higher syntax may be allowed only if project compatibility confirms it;
 - PHP 5.6 → treat as a legacy compatibility conflict; do not silently write 7.1-only code and do not downgrade Openboost's general standard unless the task explicitly targets that legacy project.
 
-## Phase 3 — Find existing implementation
+## Phase 3 — Establish the living architecture map
+
+Use `skills/opencart-architecture-map/SKILL.md`.
+
+Search before creating documentation:
+
+```text
+docs/ARCHITECTURE.md
+ARCHITECTURE.md
+existing clearly equivalent architecture/system map docs
+```
+
+Behavior:
+
+```text
+existing equivalent found
+→ read it
+→ validate task-relevant sections against code
+→ repair stale facts
+→ use it as navigation
+
+no suitable architecture document
+→ inspect project structure and major modules
+→ create docs/ARCHITECTURE.md
+→ populate only evidence-backed architecture
+→ deepen it as real work touches more subsystems
+```
+
+Do not create duplicate overlapping architecture documents.
+
+The architecture map should make it fast to answer:
+
+```text
+Where is Core?
+Where are Services?
+Which controller owns this route?
+Which service owns this behavior?
+Which model/table owns this data?
+Which module already does something similar?
+Which event/OCMOD changes this runtime path?
+Which theme/template renders it?
+Where does translation live?
+Which cron/integration calls it?
+Where should a new feature be added without duplication?
+```
+
+### PROJECT_MAP vs ARCHITECTURE
+
+If the target project has both:
+
+```text
+PROJECT_MAP.md
+→ short project passport / facts / versions / paths
+
+ARCHITECTURE.md
+→ relationships / ownership / flows / Core / Services / modules / data / hooks
+```
+
+Do not fill both with the same content.
+
+## Phase 4 — Find existing implementation
 
 Search before creating:
 
 - route/controller names;
 - module codes;
 - models/services/libraries;
+- shared Core/Services abstractions;
 - config keys;
 - language keys;
 - DB tables/columns;
@@ -84,6 +149,8 @@ Search before creating:
 - events;
 - old/disabled implementations;
 - Journal3/theme/SEO compatibility code.
+
+Use the architecture document's `Where to look first` section as a shortcut when available, then verify with repository search.
 
 Trace the complete path, not only the first matching file.
 
@@ -94,7 +161,7 @@ Admin UI
 → route/controller
 → access/modify permission
 → language route
-→ model
+→ service/model
 → DB/settings
 → template/assets
 → OCMOD/menu injection
@@ -106,14 +173,15 @@ or:
 Catalog request
 → route/controller
 → active theme
+→ service
 → model/query
 → OCMOD/events
-→ module core/service
+→ module core
 → template
 → JS/CSS
 ```
 
-## Phase 4 — Load specialized skills
+## Phase 5 — Load specialized skills
 
 ### Module work
 
@@ -122,6 +190,16 @@ Read:
 `skills/opencart-module-development/SKILL.md`
 
 before creating a module or changing its architecture/install/update lifecycle.
+
+If the change introduces/moves Core, Services, tables, adapters, hooks, cron, or subsystem boundaries, update the target architecture document in the same task.
+
+### UI/theme work
+
+Read:
+
+`skills/opencart-ui-ux/SKILL.md`
+
+for visible frontend/admin UI, buttons, colors, theme presets, custom themes, responsive/mobile-first work, tables, forms, modals, drawers, or meaningful module styling.
 
 ### Translation work
 
@@ -139,13 +217,15 @@ Read:
 
 before creating/editing modification XML or debugging runtime modified files.
 
-## Phase 5 — Produce the implementation map
+## Phase 6 — Produce the implementation map
 
 Before substantial code changes, establish internally:
 
 ```text
 Current behavior:
 Existing implementation:
+Architecture document status:
+Relevant Core/Services:
 OpenCart/PHP constraints:
 Affected admin files:
 Affected catalog files:
@@ -159,15 +239,17 @@ Smallest coherent change:
 Verification path:
 ```
 
-If the target project maintains its own `docs/PROJECT_MAP.md`, update it with confirmed reusable facts.
+If the target project maintains `docs/PROJECT_MAP.md`, update it with confirmed compact project facts.
 
-## Phase 6 — Implement by extension, not duplication
+If architecture-significant facts are learned, update `docs/ARCHITECTURE.md` or the existing equivalent.
+
+## Phase 7 — Implement by extension, not duplication
 
 Preference order:
 
 1. configure/reuse existing behavior;
 2. fix existing behavior;
-3. extend existing controller/model/service;
+3. extend existing Core/service/controller/model;
 4. add a narrow missing module layer;
 5. create a new subsystem only when evidence shows one is needed.
 
@@ -175,13 +257,15 @@ For new module architecture, favor:
 
 ```text
 thin OpenCart integration
-→ module-owned model/service/library
-→ DB/OpenCart APIs
+→ module-owned Core / Services / model
+→ DB/OpenCart APIs/adapters
 → view data
 → template
 ```
 
-## Phase 7 — Handle translations correctly
+Do not create a second service/repository/helper when the architecture map and repository show an established abstraction already owns that responsibility.
+
+## Phase 8 — Handle translations correctly
 
 If any user-visible text changes:
 
@@ -193,7 +277,19 @@ If any user-visible text changes:
 
 For UA/RU projects, verify both language packs explicitly.
 
-## Phase 8 — Handle OCMOD safely
+## Phase 9 — Handle UI/theme architecture correctly
+
+For visible module UI:
+
+- frontend is mobile-first;
+- admin UI should be modern and responsive where practical;
+- reuse existing project components/frameworks;
+- meaningful colors/buttons should use centralized theme tokens;
+- support theme presets and usually `Custom` when the module has its own visual identity;
+- avoid styling behavior based on color values;
+- document architecture-significant shared UI/theme layers in `ARCHITECTURE.md`.
+
+## Phase 10 — Handle OCMOD safely
 
 If a core/third-party path must be intercepted:
 
@@ -204,11 +300,12 @@ If a core/third-party path must be intercepted:
 5. delegate to module-owned methods;
 6. refresh modifications;
 7. inspect generated runtime output;
-8. test conflict-sensitive routes.
+8. test conflict-sensitive routes;
+9. record architecture-significant interception points in the project architecture document.
 
 Do not assume original OpenCart source equals runtime source.
 
-## Phase 9 — Handle install/update/uninstall as separate behavior
+## Phase 11 — Handle install/update/uninstall as separate behavior
 
 Verify as relevant:
 
@@ -228,7 +325,9 @@ Upgrade must preserve data by default.
 
 Uninstall should not purge business data unless explicitly designed to do so.
 
-## Phase 10 — Verify
+Update architecture data ownership/lifecycle sections when these responsibilities materially change.
+
+## Phase 12 — Verify
 
 Run/perform the relevant subset:
 
@@ -238,6 +337,8 @@ Run/perform the relevant subset:
 - active languages;
 - catalog render;
 - active theme/Journal integration;
+- responsive/mobile behavior;
+- theme preset/custom-theme behavior when applicable;
 - AJAX/API responses;
 - clean install;
 - upgrade/migration;
@@ -246,11 +347,12 @@ Run/perform the relevant subset:
 - query totals/pagination/cache consistency;
 - multistore behavior;
 - uninstall/disable path;
+- architecture document still matches changed structure;
 - final diff review.
 
 State exactly what could not be executed.
 
-## Phase 11 — Capture reusable OpenCart learning
+## Phase 13 — Capture reusable OpenCart learning
 
 At the end of substantial work, read `docs/OPEN_CART_LIVING_KNOWLEDGE.md` and determine whether Openboost should learn something new.
 
@@ -258,7 +360,7 @@ If Openboost is writable, update the correct skill/reference.
 
 If it is not writable, include a short `Openboost knowledge update` recommendation in the handoff.
 
-Project-specific hacks do not belong in the global bootstrap unless generalized and scoped.
+Project-specific architecture belongs in the target project's architecture document. Reusable architecture rules belong in Openboost.
 
 ## Minimal user invocation
 
@@ -270,17 +372,19 @@ Use https://github.com/kabasik007/Openboost
 Ось OpenCart-проєкт / repo. Треба додати ...
 ```
 
-The agent should automatically read Openboost, route to the correct skills, analyze the target project, and continue without asking the user to restate standard OpenCart conventions.
+The agent should automatically read Openboost, route to the correct skills, analyze the target project, create/validate the living architecture map, and continue without asking the user to restate standard OpenCart conventions.
 
 ## Handoff format
 
 At completion, report concisely:
 
 - what the target project actually uses;
+- architecture document created/updated/validated;
+- relevant Core/Services/subsystems found;
 - what existing implementation was found;
 - what changed;
 - what was reused rather than rewritten;
-- translations/OCMOD/schema/lifecycle impact;
+- translations/UI/OCMOD/schema/lifecycle impact;
 - verification performed;
 - remaining risks;
 - reusable Openboost knowledge added or proposed.
