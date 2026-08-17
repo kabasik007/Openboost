@@ -1,0 +1,45 @@
+name: Openboost CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+      - 'feat/**'
+      - 'fix/**'
+      - 'agent/**'
+
+permissions:
+  contents: read
+
+jobs:
+  python:
+    name: Python deploy agent
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Compile Python templates
+        run: python -m py_compile templates/opencart-deploy/local_agent.py
+      - name: Validate example JSON
+        run: python -m json.tool templates/opencart-deploy/project.example.json >/dev/null
+
+  php:
+    name: PHP ${{ matrix.php }} deploy bridge
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        php: ['5.6', '7.4', '8.2']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          coverage: none
+      - name: Lint PHP deployment templates
+        run: |
+          php -l templates/opencart-deploy/server_bridge.php
+          php -l templates/opencart-deploy/oc23_refresh_adapter.php
