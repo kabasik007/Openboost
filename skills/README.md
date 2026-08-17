@@ -33,6 +33,27 @@ Use for:
 - permissions/events;
 - packaging/layout decisions.
 
+### UI, themes and responsive module design
+
+Read:
+
+`skills/opencart-ui-ux/SKILL.md`
+
+Use for:
+
+- any visible frontend module UI;
+- buttons, colors, badges, cards, forms, tabs, modals or drawers;
+- theme presets and custom themes;
+- design tokens/CSS variables;
+- mobile-first frontend work;
+- modern responsive admin screens;
+- searchable/select-heavy admin workflows;
+- responsive tables, bulk actions and long settings forms;
+- accessibility, loading, empty and error states;
+- Journal3/custom-theme UI compatibility.
+
+If a module has its own meaningful buttons/colors/visual surface, load this skill automatically even when the user did not explicitly ask for “design”.
+
 ### Languages and translations
 
 Read:
@@ -83,6 +104,8 @@ PHP 5.6: explicit legacy support only
 OpenCart version: detect from the target repository
 Template engine: detect from the target repository
 Languages: detect actual project folder codes + language_id behavior
+Frontend UI: mobile-first by default
+Module colors: centralize as theme tokens when meaningful
 ```
 
 ## Automatic loading rule
@@ -94,14 +117,24 @@ Examples:
 ```text
 "Додай мультимовний модуль"
 → project-analysis + module-development + i18n
+→ + ui-ux when it has visible frontend/admin UI
 
 "OCMOD не застосувався"
 → project-analysis + ocmod
 
 "Додай поле в адмінку існуючого модуля"
 → project-analysis + module-development
+→ + ui-ux if the screen/layout/control changes visibly
 → + i18n if user-visible text is added
 → + ocmod if the field must be injected into core/third-party screens
+
+"Зроби плаваючу кнопку на фронті з вибором кольору"
+→ project-analysis + module-development + ui-ux
+→ + i18n for labels/help text
+
+"Перероби панель продавця під телефон"
+→ project-analysis + ui-ux
+→ + module-development if routes/models/settings also change
 ```
 
 The user should be able to provide only the Openboost repository link plus the task. The agent is responsible for routing itself to the correct skills.
