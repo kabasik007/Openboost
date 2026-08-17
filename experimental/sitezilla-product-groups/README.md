@@ -13,7 +13,7 @@ Experimental OpenCart 2.3 product-group/variant engine derived from the business
 ## v0.1 scope
 - group/profile schema and install lifecycle;
 - admin builder for groups and dimensions;
-- product autocomplete and item ordering;
+- manual product membership and item ordering;
 - legacy `hpmodel_links` import into the new schema;
 - catalog API to load the current group and its variants;
 - thin product-page OCMOD injection only.
