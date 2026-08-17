@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<modification>
+  <name>SiteZilla Product Groups</name>
+  <code>sitezilla_product_groups</code>
+  <version>0.1.0</version>
+  <author>SiteZilla</author>
+  <link>https://github.com/kabasik007/Openboost</link>
+  <file path="catalog/controller/product/product.php">
+    <operation error="skip">
+      <search><![CDATA[$data['options'] = array();]]></search>
+      <add position="before"><![CDATA[
+        $data['sitezilla_product_groups'] = $this->load->controller('extension/module/sitezilla_product_groups/product', isset($this->request->get['product_id']) ? (int)$this->request->get['product_id'] : 0);
+      ]]></add>
+    </operation>
+  </file>
+  <file path="catalog/view/theme/*/template/product/product.tpl">
+    <operation error="skip">
+      <search><![CDATA[<?php if ($options) { ?>]]></search>
+      <add position="before"><![CDATA[
+        <?php if (!empty($sitezilla_product_groups)) { echo $sitezilla_product_groups; } ?>
+      ]]></add>
+    </operation>
+  </file>
+</modification>
