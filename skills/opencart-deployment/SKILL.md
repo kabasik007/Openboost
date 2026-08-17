@@ -1,41 +1,43 @@
 ---
 name: opencart-deployment
-description: Safe Git-to-OpenCart deployment workflow using a local watcher/uploader plus a server-side PHP bridge for OCMOD update, refresh, cache handling, health checks, backups and rollback.
+description: Architecture and safety rules for Git-to-OpenCart deployment, OCMOD update/refresh, cache handling, rollback and health checks. Openboost main carries knowledge, not an experimental deploy runtime.
 ---
 
-# OpenCart Deployment Bridge
+# OpenCart Deployment Architecture
 
 Use this skill when a task involves automatic or semi-automatic deployment from Git/GitHub to an OpenCart server.
 
-## Core architecture
+This skill defines **contracts, safety rules and architecture**. It does not mean Openboost `main` ships a production-ready deploy agent or privileged server bridge.
 
-Preferred flow:
+Read `docs/OPENBOOST_REPOSITORY_BOUNDARY.md` before promoting any runtime deployment tool into Openboost itself.
+
+## Core deployment model
+
+A safe deployment system should conceptually separate:
 
 ```text
-GitHub branch / main / release
+Git branch / release
         ↓
-local deploy agent
+exact target commit
         ↓
-git fetch + commit diff
+changed-file calculation
         ↓
-backup changed remote files
+backup / rollback metadata
         ↓
-upload contents of repository upload/ to OpenCart root
+controlled file transfer
         ↓
-server bridge for privileged OpenCart actions
+OpenCart-aware privileged actions when required
         ↓
-OCMOD upsert by stable code
+OCMOD update + version-specific refresh
         ↓
-full OCMOD rebuild when required
-        ↓
-selective configured cache clear
+explicit cache invalidation
         ↓
 health check
         ↓
-store deployed commit SHA
+record deployed SHA
 ```
 
-Do not map repository `upload/` to a remote `/upload/` directory. The *contents* of `upload/` map onto the OpenCart site root.
+The concrete implementation belongs in the target project, a dedicated tooling repository, or an explicitly experimental branch unless the user deliberately promotes it.
 
 ## Branch policy
 
@@ -43,35 +45,38 @@ Recommended default:
 
 ```text
 dev/feature branch → staging, optionally auto-deploy
-main              → production, manual approval by default
-release tag        → production release deployment
+main                → production, manual approval by default
+release tag         → production release deployment
 ```
 
 Do not auto-deploy arbitrary branches to production.
 
+Deploy an exact commit SHA whenever practical so the deployed state is auditable.
+
 ## Incremental deployment
 
-Do not re-upload the whole module when a commit diff is available.
+Prefer an incremental diff over blindly re-uploading the entire extension/site when a reliable previous deployed SHA exists.
 
-Use the last successfully deployed SHA and the target SHA:
+Conceptually:
 
 ```text
 git diff --name-status OLD_SHA..NEW_SHA
 ```
 
-Handle:
+Handle intentionally:
 
 - `A` / `M`: upload changed file;
-- `D`: delete remote file only when the project explicitly allows remote deletion;
-- `R`: treat as delete old + upload new, subject to delete policy.
+- `D`: delete remotely only when explicitly allowed;
+- `R`: treat as controlled remove-old + upload-new;
+- files outside deployable project boundaries: reject/ignore according to project policy.
 
-Only paths under the configured `upload/` tree become remote web files.
+For standard OpenCart extension packages, repository `upload/` is a staging tree: the **contents** usually map onto the OpenCart root. Confirm the target project's packaging convention before using that rule.
 
-Installer/OCMOD XML is handled separately and should not be blindly uploaded to the public site root.
+Installer/OCMOD XML should follow the target OpenCart install/update lifecycle rather than being blindly copied into the public site root.
 
-## OCMOD identity and updates
+## OCMOD identity and release versions
 
-OCMOD ownership must use a **stable canonical `<code>`**.
+OCMOD ownership should use a **stable canonical `<code>`**.
 
 Good:
 
@@ -86,183 +91,186 @@ Bad:
 <code>sitezilla_promo_hub_1_5_14</code>
 ```
 
-Version belongs in `<version>`, release metadata, package filename and Git tag — not in the ownership code.
+The ownership identity belongs in `<code>`.
 
-For legacy modules that already changed code per version:
+The release identity belongs in:
 
-1. define one canonical code;
-2. explicitly configure legacy code regexes/prefixes owned by that module;
-3. update or insert the canonical row first;
-4. delete only matching legacy rows owned by that module;
-5. perform one full modification refresh;
-6. verify the generated injection exists once and stale copies are gone.
+- `<version>`;
+- project/module version source of truth;
+- package filename;
+- changelog;
+- Git tag / GitHub Release.
 
-Never delete modifications using a vague generic substring.
+For legacy modules that historically created one OCMOD row per version:
 
-## OCMOD database upsert
+1. establish one canonical code;
+2. verify which historical codes are truly owned by the same module;
+3. update/insert the canonical modification first;
+4. remove only explicit owned legacy codes/patterns;
+5. perform one normal full refresh;
+6. verify the generated injection exists once and stale owned copies are gone.
 
-For OpenCart versions where installer XML is stored in the modification table, the server-side bridge may upsert by canonical code.
+Never fuzzy-delete modification rows by generic words such as `promo`, `filter`, `checkout`, or `module`.
+
+## OCMOD database update contract
+
+When the target OpenCart generation stores modification XML in a database table, a deployment/update mechanism may upsert by canonical code.
 
 Required behavior:
 
-- parse XML with DOM;
-- reject malformed XML;
-- read `name`, `code`, `version`, `author`, `link` where available;
-- normalize the XML `<code>` to the configured canonical code before storing;
-- preserve status where appropriate, or use an explicit configured status;
+- validate/parse XML before storage;
+- read and preserve appropriate metadata;
+- normalize to the intended canonical code only when migration policy explicitly requires it;
 - use `DB_PREFIX`;
-- update the existing canonical row, otherwise insert;
-- remove only explicitly configured legacy codes;
-- record a deployment audit entry/log when possible.
+- preserve unrelated modifications;
+- update canonical row when it exists, otherwise insert;
+- remove only explicitly owned legacy rows;
+- keep DB update and modification refresh as separate verifiable steps;
+- record enough audit information to diagnose what changed.
 
-The database update and the modification refresh are separate steps.
+Do not expose arbitrary remote SQL merely to automate deployment.
 
-## OCMOD refresh
+## OpenCart 2.3 OCMOD refresh
 
-For OpenCart 2.3, modification refresh is a **full generated-tree rebuild**, not a single-file cache delete. The core refresh process clears `DIR_MODIFICATION`, loads the base modification XML, module `system/*.ocmod.xml` files and enabled DB modifications, then rebuilds generated files.
+For OpenCart 2.3, modification refresh is a **full generated-tree rebuild**, not deletion of one generated PHP file.
+
+The effective refresh lifecycle rebuilds runtime modification output from enabled sources such as:
+
+```text
+system/modification.xml
+system/*.ocmod.xml
+enabled DB modifications
+```
 
 Therefore:
 
-- do not delete only one generated file and assume OCMOD is refreshed;
-- do not leave an empty modification tree after clearing it;
-- prefer the platform refresh implementation or a version-specific adapter reproducing the same lifecycle;
-- refresh once after the complete set of OCMOD database changes;
-- preserve `index.html`/required placeholders where the target version does so;
-- capture modification errors/log output.
+- finish the complete owned OCMOD update set first;
+- perform one full refresh/rebuild;
+- do not leave an empty/partially rebuilt modification tree;
+- inspect modification logs/warnings;
+- verify the expected generated injection exists once;
+- verify stale owned injections are gone.
 
-When supporting multiple OpenCart generations, use separate adapters rather than one hard-coded route/token assumption.
-
-## Local agent responsibilities
-
-The local agent should normally handle:
-
-- repository path and monitored branch;
-- `git fetch` and remote SHA comparison;
-- optional CI-success gate;
-- `git pull --ff-only` or detached checkout of the exact SHA;
-- changed-file calculation;
-- dry-run mode;
-- backup of remote files that will be overwritten/deleted;
-- FTP/FTPS/SFTP upload transport;
-- optional controlled remote deletion;
-- installer XML discovery;
-- signed calls to the server bridge;
-- site health check;
-- persistent deployment state;
-- rollback metadata/logging.
-
-VS Code is optional. The agent should run independently from the editor, for example from Windows Task Scheduler, startup, a console process or a packaged executable.
-
-## Server bridge responsibilities
-
-The bridge should handle operations that are safer on the server than from a remote SQL connection:
-
-- read local OpenCart configuration/DB credentials;
-- OCMOD canonical-code upsert;
-- explicitly owned legacy OCMOD cleanup;
-- OpenCart-version-specific OCMOD refresh;
-- configured cache clears;
-- optional OPcache reset when explicitly enabled;
-- health/status endpoint;
-- deployment audit log.
-
-Do not expose MySQL port 3306 merely for deployment.
-
-## Authentication
-
-A deployment bridge is privileged infrastructure.
-
-Minimum requirements:
-
-- HTTPS only in production;
-- long random shared secret or stronger key mechanism;
-- HMAC signature over timestamp + nonce + request body;
-- reject stale timestamps;
-- reject replayed nonces for the accepted time window where practical;
-- constant-time signature comparison;
-- request size limits;
-- action allowlist;
-- path allowlist for cache operations;
-- never accept arbitrary SQL or arbitrary shell commands;
-- keep the bridge outside predictable public paths where practical, or restrict it by web-server/IP policy in addition to HMAC.
-
-Secrets belong in local environment/config ignored by Git, never committed in project YAML examples.
+When supporting several OpenCart generations, use version-specific adapters/contracts instead of one hard-coded route/token assumption.
 
 ## Cache policy
 
-Do not use `delete every cache directory` as the default.
+Do not make `delete every cache directory` the default.
 
-Choose cache actions from the actual diff:
+Derive cache invalidation from the actual change and target project:
 
 ```text
 OCMOD XML changed
-→ OCMOD upsert + full OCMOD refresh
-→ configured theme/runtime cache clear if required
+→ OCMOD update + full refresh
+→ theme/runtime cache only if target stack requires it
 
 TPL/Twig changed
-→ template/theme cache clear
+→ relevant template/theme cache
 
 CSS/JS changed
-→ asset/theme cache clear only when the deployment stack actually caches them server-side
+→ asset cache only where the target stack actually caches server-side assets
 
-PHP controller/model changed
-→ normally upload only
-→ optional OPcache reset when the host requires it
+PHP changed
+→ normally file update only
+→ optional OPcache reset only when explicitly supported/required
 
 language file changed
-→ normally upload only
+→ normally file update only
 ```
 
-Journal3 cache locations and behavior differ by project/version. Detect and configure them; do not hard-code one universal directory.
+Journal3/custom theme cache paths differ by project and version. Detect them; do not hard-code one universal directory.
 
 ## Backup and rollback
 
-Before overwriting/deleting remote files, store previous copies locally when practical:
+Before destructive/overwriting deployment steps, capture enough state to restore the previous known-good version.
 
-```text
-.deploy-backups/YYYYMMDD-HHMMSS/<relative-path>
-```
-
-Deployment metadata should include:
+Deployment metadata should normally include:
 
 - old SHA;
 - new SHA;
-- branch;
-- uploaded files;
-- deleted files;
-- installer XML code/version;
-- bridge actions;
+- branch/tag;
+- changed/uploaded/deleted files;
+- module/OCMOD code and version;
+- database/modification actions;
+- cache actions;
+- backup location/identifier;
 - health-check result;
 - timestamp.
 
-A rollback must restore owned files and previous owned OCMOD XML, then perform a normal full refresh. Never roll back by deleting unrelated modification/cache data.
+Rollback should restore owned files and owned OCMOD state, then run the normal version-appropriate refresh path.
 
-## Safety gates
+Never implement rollback by deleting unrelated modifications or broad cache/data sets.
 
-Before production deploy:
+## Privileged deployment actions
 
-- target branch is allowed;
-- working tree is clean or exact-SHA deployment is used;
-- target commit passed required CI when a CI gate is configured;
-- changed paths stay inside allowed project boundaries;
-- remote destination is the configured site root;
-- backup step succeeded or the project explicitly waived it;
-- installer XML ownership is known;
+Some deployment actions may need to execute inside the server/OpenCart environment rather than from a developer workstation.
+
+If a project uses a privileged bridge/service, require at minimum:
+
+- HTTPS in production;
+- strong authentication/signatures;
+- timestamp freshness;
+- replay protection/nonces where applicable;
+- constant-time signature comparison;
+- strict action allowlist;
+- strict path/code ownership boundaries;
+- request size limits;
+- no arbitrary shell execution;
+- no arbitrary SQL endpoint;
+- secrets outside Git;
+- audit logging;
+- explicit target-version behavior.
+
+Treat such a bridge as privileged infrastructure, not a casual helper script.
+
+## Health checks and deployment state
+
+A deployment should not be considered successful merely because files transferred.
+
+Verify an appropriate subset of:
+
+- expected HTTP route responds;
+- admin/catalog boot without fatal error;
+- changed module route works;
+- OCMOD refresh completed;
+- generated injection exists once;
+- critical DB migration/update succeeded;
+- required assets/templates render;
+- expected version is visible/readable.
+
+Advance `last_deployed_sha` or equivalent state only after the required success gates pass.
+
+## CI and production gates
+
+Before production deployment, verify as applicable:
+
+- target branch/tag is allowed;
+- exact target SHA is known;
+- required CI passed;
+- working tree/build artifact is clean/reproducible;
+- changed paths stay within expected boundaries;
+- backup/rollback prerequisites exist;
 - destructive deletes are explicit;
+- OCMOD ownership is known;
+- credentials/secrets are not in repository content;
 - health check is configured.
 
-If any deployment step fails, do not advance `last_deployed_sha`.
+## Openboost repository boundary
 
-## Reusable templates
+Openboost should learn from deployment experiments without automatically absorbing their runtime implementation.
 
-Openboost ships reusable starting points under:
+Default workflow:
 
 ```text
-templates/opencart-deploy/
-  local_agent.py
-  project.example.json
-  server_bridge.php
-  README.md
+experimental deploy branch / target project
+        ↓
+prove behavior
+        ↓
+extract reusable OpenCart rules
+        ↓
+update this skill / OCMOD skill / Git workflow docs
+        ↓
+leave Python/PHP/daemon/bridge implementation in its own branch or repository
 ```
 
-They are scaffolds. Before deploying a real store, adapt paths, OpenCart version, OCMOD refresh adapter, Journal/cache paths, transport and credentials to the target project.
+Only move operational deployment code into Openboost `main` when the user explicitly wants Openboost to ship and maintain it and the promotion gates in `docs/OPENBOOST_REPOSITORY_BOUNDARY.md` are satisfied.
