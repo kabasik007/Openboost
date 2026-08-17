@@ -4,13 +4,13 @@ Use this file when Openboost is supplied to an AI agent together with a real Ope
 
 The user should not have to explain where OpenCart controllers, languages, models, services, OCMOD, translations, themes, or architecture live. Openboost provides that operating model; the agent must still inspect the real target repository before making assumptions.
 
-## Phase 0 — Identify the two repositories correctly
+## Phase 0 — Identify repositories and boundaries correctly
 
 When both are available:
 
 ```text
 Openboost = instructions / reusable OpenCart knowledge
-Target repository = application/store/module to inspect and modify
+Target repository = application/store/module/tooling to inspect and modify
 ```
 
 Do not accidentally implement the requested store feature inside Openboost.
@@ -18,14 +18,40 @@ Do not accidentally implement the requested store feature inside Openboost.
 Read:
 
 1. `AGENTS.md`
-2. `skills/README.md`
-3. `skills/opencart-project-analysis/SKILL.md`
-4. `skills/opencart-architecture-map/SKILL.md` for substantial target projects
-5. other task-relevant skill files
-6. relevant architecture references
-7. `docs/OPEN_CART_LIVING_KNOWLEDGE.md`
+2. `docs/OPENBOOST_REPOSITORY_BOUNDARY.md`
+3. `skills/README.md`
+4. `skills/opencart-project-analysis/SKILL.md`
+5. `skills/opencart-architecture-map/SKILL.md` for substantial target projects
+6. other task-relevant skill files
+7. relevant architecture references
+8. `docs/OPEN_CART_LIVING_KNOWLEDGE.md`
 
 Then inspect the target repository.
+
+### Bootstrap knowledge vs runtime implementation
+
+When another branch/project contains useful OpenCart work, classify it before merging anything into Openboost:
+
+```text
+reusable knowledge
+→ architecture rule
+→ compatibility finding
+→ OCMOD/lifecycle rule
+→ checklist / safe contract
+→ port through a clean Openboost branch based on current main
+
+experimental runtime
+→ Python/PHP/Node agent
+→ deploy watcher/daemon
+→ privileged bridge/API
+→ live DB/deployment implementation
+→ project-specific CI/service code
+→ leave in target/tooling/experimental branch unless explicitly promoted
+```
+
+Do **not** merge a long-running bot/experiment branch wholesale just because part of its documentation is useful.
+
+An active experimental branch may remain unmerged by design. Only promote runtime tooling into Openboost `main` when the user explicitly wants Openboost to ship/maintain it and the promotion gates in `docs/OPENBOOST_REPOSITORY_BOUNDARY.md` are satisfied.
 
 ## Phase 1 — Tell the user what will be analyzed
 
@@ -217,6 +243,16 @@ Read:
 
 before creating/editing modification XML or debugging runtime modified files.
 
+For OCMOD deployment/update lifecycle, also read `skills/opencart-deployment/SKILL.md`.
+
+### Git/GitHub work
+
+Read:
+
+`skills/git-github-workflow/SKILL.md`
+
+for branch/PR/version/changelog/tag/release work. Do not merge active experimental branches simply to clean up branch lists.
+
 ## Phase 6 — Produce the implementation map
 
 Before substantial code changes, establish internally:
@@ -298,10 +334,13 @@ If a core/third-party path must be intercepted:
 3. verify the exact search anchor;
 4. keep XML injected logic thin;
 5. delegate to module-owned methods;
-6. refresh modifications;
-7. inspect generated runtime output;
-8. test conflict-sensitive routes;
-9. record architecture-significant interception points in the project architecture document.
+6. keep a stable canonical `<code>` across normal releases and put release identity in `<version>`/package/tag;
+7. refresh modifications using the actual target-version lifecycle;
+8. for OpenCart 2.3, use a full generated-tree rebuild rather than deleting one generated file;
+9. inspect generated runtime output;
+10. verify legacy owned versioned modifications do not leave duplicate injections;
+11. test conflict-sensitive routes;
+12. record architecture-significant interception points in the project architecture document.
 
 Do not assume original OpenCart source equals runtime source.
 
@@ -362,6 +401,14 @@ If it is not writable, include a short `Openboost knowledge update` recommendati
 
 Project-specific architecture belongs in the target project's architecture document. Reusable architecture rules belong in Openboost.
 
+If the lesson came from an experimental runtime implementation:
+
+```text
+extract the proven lesson
+→ port only the reusable knowledge to a clean Openboost branch
+→ keep the runtime implementation in its target/tooling/experiment branch
+```
+
 ## Minimal user invocation
 
 A user can simply send something like:
@@ -385,6 +432,8 @@ At completion, report concisely:
 - what changed;
 - what was reused rather than rewritten;
 - translations/UI/OCMOD/schema/lifecycle impact;
+- GitHub branch/version/release impact when relevant;
+- whether any experimental runtime work was intentionally kept out of Openboost `main`;
 - verification performed;
 - remaining risks;
 - reusable Openboost knowledge added or proposed.

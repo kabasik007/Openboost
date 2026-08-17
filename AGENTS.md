@@ -12,16 +12,66 @@ When Openboost is present:
 
 1. Read this file.
 2. Read `AI_BOOTSTRAP.md`.
-3. Load task-relevant skills from `skills/README.md` automatically.
-4. Inspect the **target OpenCart project**, not only Openboost.
-5. Search for an existing project architecture document and validate it; create `docs/ARCHITECTURE.md` when a non-trivial target project has no suitable equivalent.
-6. Tell the user briefly what you are about to analyze before implementation.
-7. Find existing functionality before creating anything new.
-8. Use the architecture document as a navigation map, but verify task-relevant facts against code.
-9. Implement only after the real integration path is understood.
-10. Update architecture documentation when the task changes project structure or ownership boundaries.
+3. Read `docs/OPENBOOST_REPOSITORY_BOUNDARY.md` before moving implementation/tooling code into Openboost itself.
+4. Load task-relevant skills from `skills/README.md` automatically.
+5. Inspect the **target OpenCart project**, not only Openboost.
+6. Search for an existing project architecture document and validate it; create `docs/ARCHITECTURE.md` when a non-trivial target project has no suitable equivalent.
+7. Tell the user briefly what you are about to analyze before implementation.
+8. Find existing functionality before creating anything new.
+9. Use the architecture document as a navigation map, but verify task-relevant facts against code.
+10. Implement only after the real integration path is understood.
+11. Update architecture documentation when the task changes project structure or ownership boundaries.
 
 Do not ask the user which Openboost skill to use.
+
+## Openboost repository boundary — mandatory
+
+Treat Openboost `main` as a **bootstrap/knowledge product**, not a catch-all tooling repository.
+
+Before bringing changes from another branch/project into Openboost, classify them:
+
+```text
+A. reusable bootstrap knowledge
+   → rules
+   → architecture patterns
+   → compatibility findings
+   → checklists
+   → documentation/templates that describe contracts
+   → safe to port through a clean branch based on current main
+
+B. experimental/runtime implementation
+   → Python/PHP/Node agents or daemons
+   → FTP/SFTP watchers
+   → privileged server bridges/endpoints
+   → live DB/deployment tooling
+   → compiled executables/service wrappers
+   → project-specific CI/deploy automation
+   → keep in the target/tooling/experimental branch by default
+```
+
+**Do not merge a long-running experimental branch wholesale merely to obtain useful documentation or lessons.**
+
+Preferred learning flow:
+
+```text
+real project / experimental branch
+        ↓
+verify what actually worked
+        ↓
+extract reusable rule / hazard / contract
+        ↓
+create a clean Openboost branch from current main
+        ↓
+port only the reusable bootstrap knowledge
+        ↓
+leave operational runtime code in its own branch/repository
+```
+
+Runtime tooling may enter Openboost `main` only when the user explicitly decides Openboost should ship and maintain it and the promotion gate in `docs/OPENBOOST_REPOSITORY_BOUNDARY.md` has been evaluated.
+
+An active experiment branch may intentionally remain unmerged. Do not delete or merge it simply to make the branch list tidy.
+
+Published tags/releases are immutable history; correct mistakes with a new version rather than rewriting old tags.
 
 ## Default compatibility policy
 
@@ -65,7 +115,9 @@ At minimum:
 - module creation/structural changes → `skills/opencart-module-development/SKILL.md`;
 - visible frontend/admin UI, buttons/colors/themes/responsive work → `skills/opencart-ui-ux/SKILL.md`;
 - translations/multilingual data → `skills/opencart-i18n/SKILL.md`;
-- OCMOD/modification work → `skills/opencart-ocmod/SKILL.md`.
+- OCMOD/modification work → `skills/opencart-ocmod/SKILL.md`;
+- Git-to-server/deployment lifecycle → `skills/opencart-deployment/SKILL.md`;
+- GitHub branches/PR/version/release work → `skills/git-github-workflow/SKILL.md`.
 
 A task can require more than one skill.
 
@@ -214,7 +266,11 @@ When OCMOD is used:
 - delegate to module-owned code;
 - inspect generated runtime modification output;
 - test refresh/update/conflict behavior;
-- reflect architecture-significant interception points in the target `ARCHITECTURE.md`.
+- reflect architecture-significant interception points in the target `ARCHITECTURE.md`;
+- keep a stable canonical `<code>` across normal releases;
+- keep release identity in `<version>`, package metadata and Git release history;
+- remove old versioned codes only when ownership is explicit;
+- for OpenCart 2.3, treat refresh as a full generated-tree rebuild rather than deletion of one generated file.
 
 ## Language policy
 
@@ -370,6 +426,8 @@ Do not turn one site's custom hack into a universal rule.
 
 Project-specific architecture belongs in the target project's `docs/ARCHITECTURE.md`; reusable architectural rules belong in Openboost.
 
+When the reusable lesson came from experimental runtime code, port the lesson through a clean Openboost branch; do not automatically port the runtime implementation.
+
 ## Golden reference
 
 The initial architecture reference is derived from user-provided OCFilter 4.8.2 and documented at:
@@ -396,4 +454,5 @@ A change is done only when:
 - structural changes were reflected in the target architecture document;
 - relevant validation was performed;
 - reusable new OpenCart knowledge was captured or proposed;
+- Openboost repository-boundary rules were respected when importing lessons/tooling from another branch/project;
 - unresolved risks are explicit.
