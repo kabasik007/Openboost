@@ -125,6 +125,51 @@ Use for:
 - modification refresh/update;
 - deciding between events and OCMOD.
 
+### Git / GitHub branches, PRs, versions and releases
+
+Read:
+
+`skills/git-github-workflow/SKILL.md`
+
+Load this automatically when the target project has a GitHub remote and the work may modify/publish the repository, even when the user only asks for an OpenCart code change and does not explicitly mention Git.
+
+Use for:
+
+- creating/reusing a task branch before normal implementation;
+- avoiding direct work on the default branch;
+- commit-message and commit-scope discipline;
+- pull request lifecycle;
+- Semantic Versioning;
+- `VERSION` / module version source-of-truth decisions;
+- `CHANGELOG.md`;
+- immutable `vX.Y.Z` tags;
+- GitHub Releases and release notes;
+- OpenCart module release archives/artifacts;
+- hotfix/release branches;
+- release automation.
+
+Mandatory default when GitHub write access exists:
+
+```text
+default branch
+      ↓
+create/reuse task branch
+      ↓
+implement + verify
+      ↓
+intentional commit(s)
+      ↓
+push branch
+      ↓
+PR
+      ↓
+merge
+      ↓
+when release-worthy: version + changelog + tag + GitHub Release
+```
+
+Do not create a fake release for every commit. Release only a coherent deployable/distributable version according to the repository's release model.
+
 ## Architecture references
 
 Concrete module analyses live under:
@@ -143,6 +188,11 @@ A reusable target-project architecture document template is available at:
 
 Use it only when the target project does not already have a suitable architecture document.
 
+Reusable release templates:
+
+- `templates/CHANGELOG.md`
+- `templates/RELEASE_CHECKLIST.md`
+
 ## Default compatibility
 
 ```text
@@ -154,6 +204,9 @@ Languages: detect actual project folder codes + language_id behavior
 Frontend UI: mobile-first by default
 Module colors: centralize as theme tokens when meaningful
 Project architecture: maintain a living code-backed architecture map
+GitHub writes: task branch + PR by default
+Versioning: SemVer by default when the project has no stronger policy
+Release history: CHANGELOG + immutable tag + GitHub Release when release-worthy
 ```
 
 ## Automatic loading rule
@@ -165,14 +218,17 @@ Examples:
 ```text
 "Ось новий великий OpenCart проект, треба розібратися"
 → project-analysis + architecture-map
+→ + git-github-workflow if repository changes will be published to GitHub
 
 "Додай мультимовний модуль"
 → project-analysis + architecture-map + module-development + i18n
 → + ui-ux when it has visible frontend/admin UI
+→ + git-github-workflow for GitHub-backed implementation
 
 "OCMOD не застосувався"
 → project-analysis + ocmod
 → + architecture-map when the interception is architecture-significant or the project map is missing/stale
+→ + git-github-workflow when applying/publishing the fix through GitHub
 
 "Додай поле в адмінку існуючого модуля"
 → project-analysis + module-development
@@ -180,17 +236,25 @@ Examples:
 → + i18n if user-visible text is added
 → + ocmod if the field must be injected into core/third-party screens
 → + architecture-map if data ownership or module boundaries change
+→ + git-github-workflow for branch/PR/version history
 
 "Зроби плаваючу кнопку на фронті з вибором кольору"
 → project-analysis + module-development + ui-ux
 → + i18n for labels/help text
+→ + git-github-workflow when GitHub-backed
 
 "Перероби панель продавця під телефон"
 → project-analysis + ui-ux
 → + module-development if routes/models/settings also change
+→ + git-github-workflow when GitHub-backed
 
 "Винеси імпорт у Core/Services і додай cron"
 → project-analysis + architecture-map + module-development
+→ + git-github-workflow when GitHub-backed
+
+"Підготуй нову версію модуля"
+→ project-analysis + git-github-workflow
+→ + module-development/ocmod/i18n/ui-ux/architecture-map according to the actual release changes
 ```
 
 The user should be able to provide only the Openboost repository link plus the task. The agent is responsible for routing itself to the correct skills.
