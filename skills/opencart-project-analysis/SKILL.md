@@ -7,11 +7,13 @@ description: Mandatory first-pass analysis for an existing OpenCart repository b
 
 Use this skill whenever the target repository is OpenCart or appears to contain an OpenCart installation.
 
+For substantial projects, load `../opencart-architecture-map/SKILL.md` together with this skill.
+
 ## Mandatory first response
 
 Before changing code, tell the user in one short paragraph what you are about to inspect. The message should be concrete, for example:
 
-> Спочатку аналізую структуру OpenCart-проєкту: визначаю версію OpenCart і PHP, admin/catalog/system, активні мови та їх коди, тему/template engine, існуючі модулі й OCMOD-модифікації, таблиці/міграції та точки інтеграції потрібної функції. Потім покажу, що вже є, куди саме треба вносити зміни, і тільки після цього буду редагувати код.
+> Спочатку аналізую структуру OpenCart-проєкту: визначаю версію OpenCart і PHP, admin/catalog/system, перевіряю наявну карту архітектури, Core/Services і спільні абстракції, активні мови та їх коди, тему/template engine, існуючі модулі й OCMOD-модифікації, таблиці/міграції та точки інтеграції потрібної функції. Якщо документа архітектури немає — створю його по фактичному коду. Потім покажу, що вже є, куди саме треба вносити зміни, і тільки після цього буду редагувати код.
 
 Do not claim that analysis is complete until repository evidence has actually been inspected.
 
@@ -48,7 +50,30 @@ Useful secondary indicators:
 
 Never infer an exact version from folder shape if the version can be read directly.
 
-### 2. Determine PHP compatibility
+### 2. Find existing architecture documentation
+
+Before creating any new project documentation, search for:
+
+```text
+docs/ARCHITECTURE.md
+ARCHITECTURE.md
+docs/PROJECT_MAP.md
+other clearly equivalent system/architecture maps
+```
+
+If a real architecture document already exists:
+
+- read it early;
+- use it to locate likely Core/Services/modules;
+- validate task-relevant paths against current code;
+- repair stale facts;
+- do not create a duplicate document.
+
+If no suitable architecture document exists and the project is non-trivial, create `docs/ARCHITECTURE.md` after enough discovery to document reality.
+
+Use `../opencart-architecture-map/SKILL.md`.
+
+### 3. Determine PHP compatibility
 
 Search, in order:
 
@@ -66,7 +91,7 @@ Record both:
 
 Do not equate the server's current PHP version with the module's required minimum without evidence.
 
-### 3. Map the OpenCart structure
+### 4. Map the OpenCart structure
 
 Inspect at least:
 
@@ -86,9 +111,22 @@ system/config/
 
 Then locate any custom extension roots and vendor/theme-specific areas.
 
+Also identify architecture-significant shared layers such as:
+
+```text
+system/library/<module>/core/
+system/library/<module>/services/
+system/library/<module>/repositories/
+system/library/<module>/adapters/
+custom service containers / registries / loaders
+```
+
+Do not assume these layers exist; discover the real structure.
+
 For the requested feature, answer:
 
 - Which route/controller owns it?
+- Which Core/service/shared library owns reusable behavior?
 - Which model reads/writes its data?
 - Which templates render it?
 - Which language file provides UI strings?
@@ -96,7 +134,7 @@ For the requested feature, answer:
 - Which events/OCMOD modifications intercept the path?
 - Which assets are loaded?
 
-### 4. Detect the admin and catalog template engines
+### 5. Detect the admin and catalog template engines
 
 Do not assume TPL or Twig from OpenCart version alone.
 
@@ -115,7 +153,7 @@ If both formats exist, determine whether they are:
 - theme compatibility layers;
 - stale legacy files.
 
-### 5. Detect languages correctly
+### 6. Detect languages correctly
 
 Inspect both:
 
@@ -132,7 +170,7 @@ For multilingual entities, also search DB/model code for `*_description` tables 
 
 Load `../opencart-i18n/SKILL.md` for any translation or multilingual-data work.
 
-### 6. Inspect modules before creating a new one
+### 7. Inspect modules before creating a new one
 
 Search for:
 
@@ -142,15 +180,16 @@ Search for:
 - table names;
 - UI labels;
 - module codes;
+- service/class names;
 - events;
 - OCMOD `<code>` values;
 - old/disabled versions.
 
-A feature that looks absent in the original file may already be injected by OCMOD.
+A feature that looks absent in the original file may already be injected by OCMOD or owned by a shared service.
 
 Load `../opencart-module-development/SKILL.md` before creating or structurally changing a module.
 
-### 7. Inspect OCMOD and runtime modifications
+### 8. Inspect OCMOD and runtime modifications
 
 Search for:
 
@@ -165,7 +204,7 @@ For every core file you plan to edit or reason about, search whether an OCMOD op
 
 Load `../opencart-ocmod/SKILL.md` before adding or editing a modification.
 
-### 8. Inspect events and lifecycle hooks
+### 9. Inspect events and lifecycle hooks
 
 Search for:
 
@@ -179,13 +218,16 @@ Search for:
 
 Determine whether the requested integration can use an event before adding an OCMOD patch.
 
-### 9. Inspect database ownership
+Record architecture-significant event/cron ownership in the project architecture document.
+
+### 10. Inspect database ownership
 
 For custom tables/settings:
 
 - find creation SQL;
 - find migration/upgrade SQL;
 - find all readers/writers;
+- identify the owning module/service;
 - identify `DB_PREFIX` use;
 - inspect indexes and composite keys;
 - inspect per-store and per-language relations;
@@ -193,7 +235,9 @@ For custom tables/settings:
 
 Never invent schema from UI assumptions.
 
-### 10. Detect theme and third-party integration
+Material custom table/settings ownership belongs in `ARCHITECTURE.md`.
+
+### 11. Detect theme, UI and third-party integration
 
 Search for the active theme and common integration layers, especially when they affect the requested path:
 
@@ -202,8 +246,43 @@ Search for the active theme and common integration layers, especially when they 
 - SEO URL modules
 - custom menu/layout loaders
 - multistore overrides
+- shared CSS/JS namespaces
+- module theme presets/design tokens
 
 Do not patch every known third-party extension preemptively. Add compatibility only for software actually present or explicitly targeted for distribution.
+
+Load `../opencart-ui-ux/SKILL.md` when visible frontend/admin UI is involved.
+
+## Architecture map output
+
+For a substantial project, the analysis should leave the repository easier to understand than before.
+
+If no suitable architecture document exists, create:
+
+`docs/ARCHITECTURE.md`
+
+If one exists, update it rather than duplicating it.
+
+The document should grow into a practical map of:
+
+```text
+Architecture summary
+Directory/layer map
+Core and Services
+Module/subsystem ownership
+Runtime flows
+Data/settings ownership
+Languages/views
+Events/OCMOD
+Integrations/adapters
+Cron/background work
+UI architecture
+Security/permissions
+Where to look first
+Architectural hazards / do-not-duplicate
+```
+
+Do not attempt exhaustive documentation of every legacy file in one session. Build a correct high-level map and deepen task-relevant areas as development continues.
 
 ## What to produce before implementation
 
@@ -212,9 +291,12 @@ For a non-trivial task, the internal analysis must establish:
 ```text
 OpenCart version: confirmed / inferred / unknown
 PHP target: confirmed / inferred / conflict
+Architecture doc: found/current | found/stale | created | not applicable
+Relevant Core/Services:
 Template engine: confirmed / mixed / unknown
 Languages: actual folder codes + language_id strategy
 Target route/controller:
+Target service/core layer:
 Target model/data layer:
 Target templates/assets:
 Related OCMOD/events:
@@ -225,21 +307,28 @@ Smallest coherent change:
 Validation plan:
 ```
 
-Update `docs/PROJECT_MAP.md` when reusable project facts are learned.
+Update `docs/PROJECT_MAP.md` when reusable compact project facts are learned.
+
+Update `docs/ARCHITECTURE.md` when architecture relationships/ownership are learned or changed.
 
 ## Debugging: where to look first
 
 Use symptom-driven tracing:
 
-- Admin page missing: route → permission → controller → language → view → menu OCMOD/event.
+- Admin page missing: route → permission → controller → language → service/model → view → menu OCMOD/event.
 - Text key shown literally/empty: correct language route → active language folder → key definition → `$this->load->language(...)` → view data.
-- Frontend block missing: layout/module assignment → controller → status/config → active theme template → OCMOD/event → cache.
-- Saving fails: `modify` permission → validate method → POST names → model method → SQL → redirect/session errors.
-- SQL error: install/migration schema → DB_PREFIX → column/table existence → upgrade path → query escaping/casting.
+- Frontend block missing: layout/module assignment → controller → status/config → service/model → active theme template → OCMOD/event → cache.
+- Saving fails: `modify` permission → validate method → POST names → service/model → SQL/settings → redirect/session errors.
+- SQL error: install/migration schema → DB_PREFIX → column/table existence → upgrade path → owner service/model → query escaping/casting.
 - OCMOD appears ignored: XML path/search anchor → modification registration → refresh → generated modification cache → conflicting modification.
 - Works in default theme but not Journal/custom theme: template path and theme loader → OCMOD target → Journal/custom controller/model replacements.
 - Works in one language only: language folder aliases → language_id-indexed data → SEO URL per language/store → fallback logic.
+- Duplicate logic appearing: architecture `do-not-duplicate` index → shared Core/Services → callers → legacy implementation.
+
+Promote frequently recurring project-specific traces into the target architecture document's `Where to look first` section.
 
 ## Analysis completion rule
 
-Do not start implementation merely because one matching file was found. Trace the complete request path from entry point to storage/rendering and identify modification/event interception first.
+Do not start implementation merely because one matching file was found. Trace the complete request path from entry point through Core/Services/data/rendering and identify modification/event interception first.
+
+For a substantial undocumented project, analysis is not considered fully bootstrapped until a usable architecture map exists or an existing equivalent has been validated.
