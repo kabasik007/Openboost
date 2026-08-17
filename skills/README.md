@@ -125,6 +125,8 @@ Use for:
 - modification refresh/update;
 - deciding between events and OCMOD.
 
+When OCMOD is being installed or updated by a deployment process, also load `skills/opencart-deployment/SKILL.md`. Deployment must preserve a stable canonical modification code and use a normal full generated-tree refresh for the target OpenCart version rather than deleting one generated file.
+
 ### Git / GitHub branches, PRs, versions and releases
 
 Read:
@@ -170,6 +172,47 @@ when release-worthy: version + changelog + tag + GitHub Release
 
 Do not create a fake release for every commit. Release only a coherent deployable/distributable version according to the repository's release model.
 
+### Git-to-server / OpenCart deployment
+
+Read:
+
+`skills/opencart-deployment/SKILL.md`
+
+Load this automatically when the task includes:
+
+- watching a Git/GitHub branch and deploying changes;
+- FTP/FTPS/SFTP upload from a local workstation;
+- mapping an extension `upload/` tree onto an OpenCart root;
+- importing/updating `install.xml` or OCMOD XML on a server;
+- refreshing OCMOD after deployment;
+- clearing Journal/theme/runtime caches as part of deployment;
+- deployment backup/rollback/health checks;
+- a local deploy agent or server-side deploy bridge.
+
+For GitHub-backed deployments also load `git-github-workflow`. For OCMOD deployment also load `opencart-ocmod`.
+
+Default architecture:
+
+```text
+Git branch/release
+      ↓
+local deploy agent
+      ↓
+incremental upload of upload/ CONTENTS
+      ↓
+signed server bridge
+      ↓
+canonical OCMOD upsert
+      ↓
+version-specific full OCMOD refresh
+      ↓
+explicit cache profile(s)
+      ↓
+health check + deployed SHA
+```
+
+Deployment is privileged infrastructure. Do not expose MySQL or arbitrary shell/SQL endpoints merely to automate OpenCart updates.
+
 ## Architecture references
 
 Concrete module analyses live under:
@@ -193,6 +236,14 @@ Reusable release templates:
 - `templates/CHANGELOG.md`
 - `templates/RELEASE_CHECKLIST.md`
 
+Reusable OpenCart deployment starter:
+
+- `templates/opencart-deploy/local_agent.py`
+- `templates/opencart-deploy/project.example.json`
+- `templates/opencart-deploy/server_bridge.php`
+- `templates/opencart-deploy/oc23_refresh_adapter.php`
+- `templates/opencart-deploy/README.md`
+
 ## Default compatibility
 
 ```text
@@ -207,6 +258,7 @@ Project architecture: maintain a living code-backed architecture map
 GitHub writes: task branch + PR by default
 Versioning: SemVer by default when the project has no stronger policy
 Release history: CHANGELOG + immutable tag + GitHub Release when release-worthy
+Deployment: incremental + reversible + exact-target-version adapters
 ```
 
 ## Automatic loading rule
@@ -229,6 +281,15 @@ Examples:
 → project-analysis + ocmod
 → + architecture-map when the interception is architecture-significant or the project map is missing/stale
 → + git-github-workflow when applying/publishing the fix through GitHub
+
+"Автоматично заливати dev-гілку на тестовий OpenCart"
+→ git-github-workflow + opencart-deployment
+→ + opencart-ocmod when install.xml/modification XML is part of deployment
+→ + project-analysis to determine real server/theme/cache behavior
+
+"Оновлювати install.xml у БД і скидати OCMOD після FTP deploy"
+→ project-analysis + opencart-ocmod + opencart-deployment
+→ canonical code first; never fuzzy-delete unrelated modifications
 
 "Додай поле в адмінку існуючого модуля"
 → project-analysis + module-development
