@@ -2,6 +2,12 @@
 
 Openboost is an OpenCart-focused AI development bootstrap. AI agents should load the narrowest relevant skill automatically; the user should not need to name skill files manually.
 
+Before routing implementation/tooling work, read:
+
+`docs/OPENBOOST_REPOSITORY_BOUNDARY.md`
+
+Openboost `main` is primarily instructions + reusable OpenCart knowledge. Experimental runtime agents, server bridges, daemons or project-specific deployment code do not enter `main` automatically; extract their reusable lessons into skills/docs instead.
+
 ## Skill router
 
 ### Analyze an existing OpenCart project
@@ -125,7 +131,15 @@ Use for:
 - modification refresh/update;
 - deciding between events and OCMOD.
 
-When OCMOD is being installed or updated by a deployment process, also load `skills/opencart-deployment/SKILL.md`. Deployment must preserve a stable canonical modification code and use a normal full generated-tree refresh for the target OpenCart version rather than deleting one generated file.
+When OCMOD is installed/updated by a deployment process, also load `skills/opencart-deployment/SKILL.md`.
+
+Important reusable rules:
+
+- use a stable canonical modification `<code>`;
+- keep the release version in `<version>` / package / Git release metadata;
+- remove legacy versioned OCMOD rows only through explicit owned patterns;
+- use the target OpenCart generation's normal full refresh lifecycle;
+- for OpenCart 2.3, do not fake refresh by deleting one generated file.
 
 ### Git / GitHub branches, PRs, versions and releases
 
@@ -181,37 +195,39 @@ Read:
 Load this automatically when the task includes:
 
 - watching a Git/GitHub branch and deploying changes;
-- FTP/FTPS/SFTP upload from a local workstation;
+- FTP/FTPS/SFTP or another file-transfer deployment path;
 - mapping an extension `upload/` tree onto an OpenCart root;
 - importing/updating `install.xml` or OCMOD XML on a server;
 - refreshing OCMOD after deployment;
 - clearing Journal/theme/runtime caches as part of deployment;
 - deployment backup/rollback/health checks;
-- a local deploy agent or server-side deploy bridge.
+- designing a local deploy agent or privileged server-side bridge.
 
 For GitHub-backed deployments also load `git-github-workflow`. For OCMOD deployment also load `opencart-ocmod`.
 
-Default architecture:
+Conceptual default architecture:
 
 ```text
 Git branch/release
       ↓
-local deploy agent
+exact target SHA + diff
       ↓
-incremental upload of upload/ CONTENTS
+backup / reversible file update
       ↓
-signed server bridge
+OpenCart-aware privileged action when required
       ↓
 canonical OCMOD upsert
       ↓
 version-specific full OCMOD refresh
       ↓
-explicit cache profile(s)
+explicit cache invalidation
       ↓
 health check + deployed SHA
 ```
 
 Deployment is privileged infrastructure. Do not expose MySQL or arbitrary shell/SQL endpoints merely to automate OpenCart updates.
+
+**Repository boundary:** this skill is reusable knowledge. A concrete Python/PHP deploy implementation remains in the target/tooling repository or experimental branch unless the user explicitly promotes it into Openboost after the repository-boundary promotion gates are satisfied.
 
 ## Architecture references
 
@@ -236,14 +252,6 @@ Reusable release templates:
 - `templates/CHANGELOG.md`
 - `templates/RELEASE_CHECKLIST.md`
 
-Reusable OpenCart deployment starter:
-
-- `templates/opencart-deploy/local_agent.py`
-- `templates/opencart-deploy/project.example.json`
-- `templates/opencart-deploy/server_bridge.php`
-- `templates/opencart-deploy/oc23_refresh_adapter.php`
-- `templates/opencart-deploy/README.md`
-
 ## Default compatibility
 
 ```text
@@ -258,7 +266,8 @@ Project architecture: maintain a living code-backed architecture map
 GitHub writes: task branch + PR by default
 Versioning: SemVer by default when the project has no stronger policy
 Release history: CHANGELOG + immutable tag + GitHub Release when release-worthy
-Deployment: incremental + reversible + exact-target-version adapters
+Deployment knowledge: incremental + reversible + exact-target-version-aware
+Experimental runtime tooling: keep out of Openboost main unless explicitly promoted
 ```
 
 ## Automatic loading rule
@@ -286,8 +295,9 @@ Examples:
 → git-github-workflow + opencart-deployment
 → + opencart-ocmod when install.xml/modification XML is part of deployment
 → + project-analysis to determine real server/theme/cache behavior
+→ implementation itself stays in target/tooling repo unless explicitly promoted
 
-"Оновлювати install.xml у БД і скидати OCMOD після FTP deploy"
+"Оновлювати install.xml у БД і скидати OCMOD після deploy"
 → project-analysis + opencart-ocmod + opencart-deployment
 → canonical code first; never fuzzy-delete unrelated modifications
 
@@ -325,3 +335,5 @@ The user should be able to provide only the Openboost repository link plus the t
 Read `docs/OPEN_CART_LIVING_KNOWLEDGE.md` for the rule that Openboost should improve after substantial OpenCart work.
 
 Do not add one-off project hacks as universal rules. Reusable lessons belong in skills; project-specific facts belong in the target project's project map/architecture/docs.
+
+When reusable lessons come from an experimental implementation branch, extract the lessons without automatically merging the runtime implementation into Openboost `main`.
