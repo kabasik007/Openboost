@@ -50,6 +50,23 @@ Use stable module-owned metadata:
 
 The `<code>` must be unique and stable enough to identify ownership during update/removal.
 
+**Do not put the release version into `<code>` for normal module updates.**
+
+Good:
+
+```xml
+<code>sitezilla_promo_hub</code>
+<version>1.5.14</version>
+```
+
+Bad:
+
+```xml
+<code>sitezilla_promo_hub_1_5_14</code>
+```
+
+The stable code is the ownership/update key. Version belongs in `<version>`, release metadata, package filename and Git tag.
+
 Do not delete or overwrite broad modification patterns belonging to other extensions.
 
 ## File targets
@@ -190,6 +207,62 @@ OpenCart 2.x and 3.x route/token conventions differ. Do not hard-code `token`/`u
 
 Do not automatically self-request the modification refresh endpoint via cURL unless the project needs that behavior and session/error handling is understood. A simpler explicit refresh/update path is preferable when adequate.
 
+### OpenCart 2.3 refresh is a full rebuild
+
+For OpenCart 2.3, do **not** treat modification refresh as deleting one generated file.
+
+The platform refresh lifecycle clears the generated modification tree, then rebuilds it from all enabled sources, including:
+
+```text
+system/modification.xml
+system/*.ocmod.xml
+enabled DB modifications
+```
+
+and applies operations in the platform's modification ordering before writing generated runtime files.
+
+Therefore, after changing OCMOD XML in a deployment/update flow:
+
+1. finish all owned modification DB/file changes first;
+2. perform one normal full refresh/rebuild;
+3. inspect modification log/warnings;
+4. verify the expected generated injection exists once;
+5. verify stale injections from old owned modification codes are gone.
+
+Deleting only `system/storage/modification/catalog/.../some_file.php` is not a complete refresh and can leave runtime state inconsistent.
+
+For automation, load `skills/opencart-deployment/SKILL.md` and use a target-version refresh adapter.
+
+## Deployment/update by canonical code
+
+When a deployer imports or updates `install.xml`/OCMOD XML in the database:
+
+- identify the modification by a stable canonical `<code>`;
+- `UPDATE` the owned canonical modification when it exists, otherwise `INSERT` it;
+- normalize old package XML to the canonical code before storing when the project intentionally migrates away from versioned codes;
+- preserve unrelated modifications;
+- remove legacy codes only through explicit anchored patterns that are proven to belong to the module;
+- refresh once after the complete owned update set;
+- do not expose a remote arbitrary-SQL endpoint merely for deployment.
+
+A safe migration from historical versioned codes is conceptually:
+
+```text
+new XML
+  ↓
+parse + validate
+  ↓
+canonical code upsert
+  ↓
+remove explicit owned legacy codes only
+  ↓
+full OCMOD refresh
+  ↓
+verify generated runtime output
+```
+
+Do not fuzzy-delete rows because the code contains a generic word such as `promo`, `filter`, `checkout`, or `module`.
+
 ## Runtime truth
 
 When debugging OCMOD, original source is not necessarily runtime source.
@@ -246,7 +319,8 @@ Do not add every known compatibility patch to a project-specific extension. Only
 
 When replacing your own modification:
 
-- use a unique code prefix;
+- use a unique stable code prefix;
+- prefer updating the canonical modification instead of creating one row per release version;
 - remove only codes/files owned by the extension;
 - preserve unrelated modifications;
 - refresh once after the set of changes where possible;
@@ -262,12 +336,14 @@ Before building `.ocmod.zip`, inspect a working extension for the exact target O
 
 The OCFilter 4.8.2 reference uses the latter style. Treat that as one proven strategy, not the universal package format.
 
+For deploy automation, remember that package `upload/` is normally a staging tree: the **contents** map onto the OpenCart root. `install.xml`/installer XML should follow the target install/update lifecycle rather than being blindly copied to the public root.
+
 ## Validation checklist
 
 For every OCMOD change, verify:
 
 - XML parses;
-- modification code is unique;
+- modification code is unique and stable across ordinary version updates;
 - every target file exists for the supported version;
 - every search anchor matches the intended location;
 - refresh completes without modification errors;
@@ -277,6 +353,7 @@ For every OCMOD change, verify:
 - affected totals/pagination/cache remain consistent;
 - active theme works;
 - relevant third-party integration works;
+- legacy owned modification rows do not leave duplicate injections;
 - uninstall/update removes or replaces the extension's own injection cleanly.
 
 ## Reference lessons from OCFilter 4.8.2

@@ -12,7 +12,7 @@
     "host": "ftp.example.com",
     "port": 21,
     "user": "CHANGE_ME",
-    "password": "CHANGE_ME_OR_LOAD_THIS_CONFIG_FROM_A_SECRET_LOCATION",
+    "password_env": "OPENBOOST_FTP_PASSWORD",
     "tls": true,
     "remote_root": "/www"
   },
@@ -26,8 +26,7 @@
     "status": 1,
     "installer_files": [
       "install.xml",
-      "install.ocmod.xml",
-      "system/*.ocmod.xml"
+      "install.ocmod.xml"
     ],
     "legacy_code_regexes": [
       "^sitezilla_promo_hub_v?[0-9._-]+$",

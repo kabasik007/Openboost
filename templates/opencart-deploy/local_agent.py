@@ -10,14 +10,13 @@ blindly to the public root.
 from __future__ import print_function
 
 import argparse
-import base64
 import ftplib
+import glob
 import hashlib
 import hmac
 import json
 import os
 import posixpath
-import shutil
 import subprocess
 import sys
 import time
@@ -60,6 +59,16 @@ def save_json(path, data):
     if os.path.exists(path):
         os.remove(path)
     os.rename(tmp, path)
+
+
+def secret_value(cfg, direct_key, env_key, default_env=None):
+    direct = cfg.get(direct_key)
+    if direct:
+        return direct
+    env_name = cfg.get(env_key) or default_env
+    if env_name:
+        return os.environ.get(env_name)
+    return None
 
 
 def now_stamp():
@@ -114,10 +123,13 @@ class FtpTransport(object):
         self.ftp = None
 
     def connect(self):
+        password = secret_value(self.cfg, 'password', 'password_env', 'OPENBOOST_FTP_PASSWORD')
+        if not password:
+            raise DeployError('FTP password is not configured. Use ftp.password_env where possible.')
         cls = ftplib.FTP_TLS if self.cfg.get('tls', False) else ftplib.FTP
         self.ftp = cls()
         self.ftp.connect(self.cfg['host'], int(self.cfg.get('port', 21)), timeout=30)
-        self.ftp.login(self.cfg['user'], self.cfg['password'])
+        self.ftp.login(self.cfg['user'], password)
         if isinstance(self.ftp, ftplib.FTP_TLS):
             self.ftp.prot_p()
         return self
@@ -188,16 +200,16 @@ def map_upload_path(repo_path, cfg):
 
 
 def discover_installer(repo, cfg):
+    # These are DB/installer XML sources. File-based OCMODs that belong under
+    # upload/system/*.ocmod.xml should remain normal upload-tree files.
     candidates = cfg.get('ocmod', {}).get('installer_files', [
         'install.xml',
-        'install.ocmod.xml',
-        'system/*.ocmod.xml'
+        'install.ocmod.xml'
     ])
     found = []
-    import glob
     for pattern in candidates:
         found.extend(glob.glob(os.path.join(repo, pattern)))
-    # Stable order, no duplicates.
+
     result = []
     seen = set()
     for path in sorted(found):
@@ -205,13 +217,16 @@ def discover_installer(repo, cfg):
         if os.path.isfile(ap) and ap not in seen:
             seen.add(ap)
             result.append(ap)
+
+    if len(result) > 1 and not cfg.get('ocmod', {}).get('allow_multiple_installer_files', False):
+        raise DeployError('Multiple installer XML files matched; configure one exact installer or explicitly allow multiple.')
     return result
 
 
 def bridge_call(cfg, action, payload):
     bridge = cfg.get('bridge') or {}
     url = bridge.get('url')
-    secret = bridge.get('secret') or os.environ.get(bridge.get('secret_env', 'OPENBOOST_DEPLOY_SECRET'))
+    secret = secret_value(bridge, 'secret', 'secret_env', 'OPENBOOST_DEPLOY_SECRET')
     if not url:
         raise DeployError('Bridge URL is not configured.')
     if not secret:
@@ -236,7 +251,10 @@ def bridge_call(cfg, action, payload):
     except (HTTPError, URLError) as exc:
         raise DeployError('Bridge request failed: %s' % exc)
 
-    data = json.loads(raw)
+    try:
+        data = json.loads(raw)
+    except ValueError:
+        raise DeployError('Bridge returned invalid JSON: %s' % raw[:500])
     if not data.get('ok'):
         raise DeployError('Bridge action %s failed: %s' % (action, data.get('error', raw)))
     return data
@@ -314,10 +332,18 @@ def deploy_once(cfg, dry_run=False):
     transport = FtpTransport(cfg['ftp']).connect()
     uploaded = []
     deleted = []
+    backups = []
     try:
         for status, rel, remote in upload_changes:
             backup = os.path.join(backup_root, rel.replace('/', os.sep))
-            transport.download_if_exists(remote, backup)
+            existed = transport.download_if_exists(remote, backup)
+            backups.append({
+                'repository_path': rel,
+                'remote_path': remote,
+                'backup_path': backup if existed else None,
+                'remote_existed': bool(existed),
+                'change_status': status,
+            })
             if status == 'D':
                 if allow_delete and transport.delete(remote):
                     deleted.append(remote)
@@ -361,6 +387,7 @@ def deploy_once(cfg, dry_run=False):
         'deployed_at': datetime.now().isoformat(),
         'uploaded': uploaded,
         'deleted': deleted,
+        'backups': backups,
         'backup_root': backup_root,
         'health': health,
     }
