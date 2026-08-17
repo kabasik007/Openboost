@@ -2,23 +2,30 @@
 /**
  * OpenCart 2.3 OCMOD refresh adapter for server_bridge.php.
  *
- * Returns a callable. The bridge must have already loaded the storefront
- * config.php so DB_* and DIR_* constants are available.
+ * Returns a callable accepting the bridge config array. The bridge must have
+ * already loaded storefront config.php so DB_* and DIR_* constants exist.
  *
- * This adapter intentionally mirrors the OpenCart 2.3 refresh lifecycle:
- * clear generated modification files, load system/modification.xml,
- * system/*.ocmod.xml and enabled DB modifications, apply operations, then
- * write generated files under DIR_MODIFICATION.
+ * The adapter follows the OpenCart 2.3 refresh lifecycle: clear the generated
+ * modification tree, load system/modification.xml, system/*.ocmod.xml and
+ * enabled DB modifications, apply operations in the platform's normal name
+ * ordering, then write generated files under DIR_MODIFICATION.
+ *
+ * This is a deploy-tool adapter, not a replacement for OpenCart core. Validate
+ * it against the exact OpenCart 2.3 fork before enabling production auto-deploy.
  */
 
-return function () {
+return function ($config) {
     if (!defined('DIR_SYSTEM') || !defined('DIR_MODIFICATION') || !defined('DB_PREFIX')) {
         throw new Exception('OpenCart constants are not loaded.');
     }
 
     $siteRoot = rtrim(dirname(rtrim(DIR_SYSTEM, '/\\')), '/\\') . DIRECTORY_SEPARATOR;
     $catalogRoot = $siteRoot . 'catalog' . DIRECTORY_SEPARATOR;
-    $adminRoot = $siteRoot . 'admin' . DIRECTORY_SEPARATOR;
+    $adminDir = isset($config['admin_dir']) ? trim($config['admin_dir'], '/\\') : 'admin';
+    if ($adminDir === '' || strpos($adminDir, '..') !== false) {
+        throw new Exception('Unsafe admin_dir in deploy bridge config.');
+    }
+    $adminRoot = $siteRoot . $adminDir . DIRECTORY_SEPARATOR;
 
     $port = defined('DB_PORT') ? DB_PORT : 3306;
     $db = @new mysqli(DB_HOSTNAME, DB_USERNAME, DB_PASSWORD, DB_DATABASE, $port);
@@ -28,9 +35,8 @@ return function () {
     $db->set_charset('utf8');
 
     $deleteTree = function ($root) {
-        if (!is_dir($root)) {
-            @mkdir($root, 0775, true);
-            return;
+        if (!is_dir($root) && !@mkdir($root, 0775, true)) {
+            throw new Exception('Cannot create DIR_MODIFICATION.');
         }
         $items = array();
         $it = new RecursiveIteratorIterator(
@@ -50,6 +56,10 @@ return function () {
                 @unlink($path);
             }
         }
+        $index = rtrim($root, '/\\') . DIRECTORY_SEPARATOR . 'index.html';
+        if (!is_file($index)) {
+            @file_put_contents($index, '');
+        }
     };
 
     $deleteTree(DIR_MODIFICATION);
@@ -61,13 +71,15 @@ return function () {
     }
     $files = glob(DIR_SYSTEM . '*.ocmod.xml');
     if ($files) {
+        sort($files, SORT_STRING);
         foreach ($files as $file) {
             $xmlSources[] = array('source' => $file, 'xml' => file_get_contents($file));
         }
     }
 
     $table = DB_PREFIX . 'modification';
-    $result = $db->query("SELECT code, name, xml FROM `" . $table . "` WHERE status = 1 ORDER BY modification_id ASC");
+    // OpenCart 2.3 model getModifications() defaults to ORDER BY name ASC.
+    $result = $db->query("SELECT code, name, xml FROM `" . $table . "` WHERE status = 1 ORDER BY name ASC");
     if ($result) {
         while ($row = $result->fetch_assoc()) {
             $xmlSources[] = array('source' => 'db:' . $row['code'], 'xml' => $row['xml']);
@@ -270,6 +282,9 @@ return function () {
                         $message = 'Search not found in ' . $key . ' for ' . $modName . ': ' . $needle;
                         $errors[] = $message;
                         if ($mode === 'abort') {
+                            // Conservative behavior: restore this target to its pre-refresh source.
+                            // Projects relying on complex cross-operation recovery should use the
+                            // exact platform refresh implementation instead of this starter.
                             $generated[$key] = $original[$key];
                             break;
                         }
@@ -305,6 +320,7 @@ return function () {
 
     return array(
         'adapter' => 'opencart-2.3',
+        'admin_dir' => $adminDir,
         'sources' => count($xmlSources),
         'generated_files' => $written,
         'warnings' => $errors,
