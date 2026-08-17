@@ -6,27 +6,29 @@ Openboost uses Semantic Versioning unless a future documented policy replaces it
 
 ## [Unreleased]
 
+No unreleased changes yet.
+
+## [0.1.0] - 2026-08-17
+
 ### Added
+- Evidence-first OpenCart project analysis and repository orientation.
+- Living project architecture documentation with `Core`, `Services`, subsystem ownership, runtime flows, data ownership, OCMOD/events and `Where to look first` guidance.
+- OpenCart module-development standard derived from OCFilter 4.8.2 architectural patterns and cleaned up for PHP 7.1+ projects.
+- Multilingual/i18n guidance for admin/catalog language files, `language_id` data and multilingual SEO/content.
+- OCMOD analysis, creation, refresh and conflict-debugging rules.
+- Mobile-first frontend and modern responsive admin UI guidance.
+- Theme presets, custom themes and centralized design-token/CSS-variable guidance for module UI.
+- Living reusable OpenCart knowledge rules so Openboost improves during real development.
 - Git/GitHub workflow skill requiring task branches, intentional commits and pull requests for normal GitHub-backed development.
 - Semantic Versioning, immutable version tags and GitHub Release guidance.
 - Release artifact rules for distributable OpenCart modules.
-- Reusable changelog template and automated tag-to-release workflow for Openboost.
+- Reusable changelog and release-checklist templates.
+- Tag-driven GitHub Actions workflow for Openboost releases.
 
 ### Changed
-- GitHub-backed development is now treated as a traceable lifecycle rather than direct edits to the default branch.
+- PHP 7.1+ is the default minimum for new Openboost-guided development; PHP 5.6 is legacy-only unless explicitly required.
+- GitHub-backed development is treated as a traceable branch → PR → merge → version → tag → release lifecycle instead of direct edits to the default branch.
+- Project architecture is treated as living code-backed documentation rather than one-time notes.
 
-## Planned first release: 0.1.0
-
-The first stable Openboost release will consolidate the initial OpenCart AI bootstrap, including:
-
-- evidence-first OpenCart project analysis;
-- living project architecture documentation (`Core`, `Services`, data ownership and runtime flows);
-- OpenCart module development architecture;
-- multilingual/i18n rules;
-- OCMOD analysis and development rules;
-- mobile-first frontend and modern responsive admin UI guidance;
-- theme presets/custom themes/design-token guidance;
-- living reusable OpenCart knowledge;
-- Git/GitHub branch, PR, versioning and release workflow.
-
-At release time, move the relevant `[Unreleased]` entries under `## [0.1.0] - YYYY-MM-DD`, ensure `VERSION` contains `0.1.0`, create tag `v0.1.0`, and create the GitHub Release from that tag.
+### Reference architecture
+- Initial golden-reference analysis is based on user-provided OCFilter 4.8.2; the third-party package itself is not stored in Openboost.
