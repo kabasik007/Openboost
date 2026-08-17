@@ -18,6 +18,45 @@ Use for:
 - determining OpenCart/PHP/template/language structure;
 - tracing admin/catalog/runtime behavior.
 
+For any substantial existing project also read:
+
+`skills/opencart-architecture-map/SKILL.md`
+
+The architecture skill is responsible for finding, validating, creating, and maintaining the target project's living `docs/ARCHITECTURE.md` (or existing equivalent). The user should not need to ask for this separately.
+
+### Living project architecture map
+
+Read:
+
+`skills/opencart-architecture-map/SKILL.md`
+
+Use for:
+
+- initial orientation in a non-trivial OpenCart project;
+- documenting `Core`, `Services`, models/repositories/adapters and ownership boundaries;
+- mapping modules/subsystems and their entry points;
+- documenting runtime request/data flows;
+- mapping tables/settings/events/OCMOD/cron/integrations;
+- maintaining a practical `Where to look first` index;
+- validating an existing architecture document against current code;
+- updating architecture docs after structural changes.
+
+Mandatory behavior:
+
+```text
+search existing architecture doc
+        ↓
+if equivalent exists → validate + update it
+        ↓
+if none exists → create docs/ARCHITECTURE.md
+        ↓
+use it as navigation for future work
+        ↓
+verify task-relevant facts against code before editing
+```
+
+Do not create duplicate architecture documents when the target project already has a suitable equivalent.
+
 ### Create or structurally edit a module
 
 Read:
@@ -32,6 +71,8 @@ Use for:
 - migrations;
 - permissions/events;
 - packaging/layout decisions.
+
+Load `opencart-architecture-map` too when the change creates/moves services, modules, tables, integrations, hooks, jobs, or other architecture-significant pieces.
 
 ### UI, themes and responsive module design
 
@@ -96,6 +137,12 @@ Current reference:
 
 References are evidence and pattern sources. They are not code templates to copy line-for-line.
 
+A reusable target-project architecture document template is available at:
+
+`templates/ARCHITECTURE.md`
+
+Use it only when the target project does not already have a suitable architecture document.
+
 ## Default compatibility
 
 ```text
@@ -106,6 +153,7 @@ Template engine: detect from the target repository
 Languages: detect actual project folder codes + language_id behavior
 Frontend UI: mobile-first by default
 Module colors: centralize as theme tokens when meaningful
+Project architecture: maintain a living code-backed architecture map
 ```
 
 ## Automatic loading rule
@@ -115,18 +163,23 @@ If a task spans multiple concerns, load multiple skills.
 Examples:
 
 ```text
+"Ось новий великий OpenCart проект, треба розібратися"
+→ project-analysis + architecture-map
+
 "Додай мультимовний модуль"
-→ project-analysis + module-development + i18n
+→ project-analysis + architecture-map + module-development + i18n
 → + ui-ux when it has visible frontend/admin UI
 
 "OCMOD не застосувався"
 → project-analysis + ocmod
+→ + architecture-map when the interception is architecture-significant or the project map is missing/stale
 
 "Додай поле в адмінку існуючого модуля"
 → project-analysis + module-development
 → + ui-ux if the screen/layout/control changes visibly
 → + i18n if user-visible text is added
 → + ocmod if the field must be injected into core/third-party screens
+→ + architecture-map if data ownership or module boundaries change
 
 "Зроби плаваючу кнопку на фронті з вибором кольору"
 → project-analysis + module-development + ui-ux
@@ -135,6 +188,9 @@ Examples:
 "Перероби панель продавця під телефон"
 → project-analysis + ui-ux
 → + module-development if routes/models/settings also change
+
+"Винеси імпорт у Core/Services і додай cron"
+→ project-analysis + architecture-map + module-development
 ```
 
 The user should be able to provide only the Openboost repository link plus the task. The agent is responsible for routing itself to the correct skills.
@@ -143,4 +199,4 @@ The user should be able to provide only the Openboost repository link plus the t
 
 Read `docs/OPEN_CART_LIVING_KNOWLEDGE.md` for the rule that Openboost should improve after substantial OpenCart work.
 
-Do not add one-off project hacks as universal rules. Reusable lessons belong in skills; project-specific facts belong in the target project's project map/docs.
+Do not add one-off project hacks as universal rules. Reusable lessons belong in skills; project-specific facts belong in the target project's project map/architecture/docs.
