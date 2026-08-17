@@ -14,9 +14,12 @@ When Openboost is present:
 2. Read `AI_BOOTSTRAP.md`.
 3. Load task-relevant skills from `skills/README.md` automatically.
 4. Inspect the **target OpenCart project**, not only Openboost.
-5. Tell the user briefly what you are about to analyze before implementation.
-6. Find existing functionality before creating anything new.
-7. Implement only after the real integration path is understood.
+5. Search for an existing project architecture document and validate it; create `docs/ARCHITECTURE.md` when a non-trivial target project has no suitable equivalent.
+6. Tell the user briefly what you are about to analyze before implementation.
+7. Find existing functionality before creating anything new.
+8. Use the architecture document as a navigation map, but verify task-relevant facts against code.
+9. Implement only after the real integration path is understood.
+10. Update architecture documentation when the task changes project structure or ownership boundaries.
 
 Do not ask the user which Openboost skill to use.
 
@@ -29,6 +32,8 @@ For new OpenCart development through Openboost:
 - Never assume the exact OpenCart version; detect it from repository evidence.
 - Never assume TPL/Twig; detect the active template engine from the target project.
 - Never assume language folder codes; inspect the project's actual languages.
+- Frontend module UI is mobile-first by default.
+- Meaningful module colors/buttons should use centralized theme tokens/presets rather than scattered hard-coded styles.
 
 If the target project proves incompatible with the baseline, report the conflict instead of silently guessing.
 
@@ -44,8 +49,10 @@ Before implementation:
 2. search for existing routes/controllers/models/services/settings/tables/templates/language keys;
 3. inspect OCMOD/events that may alter the same runtime path;
 4. identify active languages/theme/template engine;
-5. identify the smallest coherent extension point;
-6. preserve compatibility and existing data unless the requested change intentionally breaks them.
+5. identify existing Core/Services/shared abstractions;
+6. read and validate the target architecture document when present;
+7. identify the smallest coherent extension point;
+8. preserve compatibility and existing data unless the requested change intentionally breaks them.
 
 ## Mandatory OpenCart skill routing
 
@@ -54,7 +61,9 @@ Read `skills/README.md` and load relevant skill files.
 At minimum:
 
 - any existing-project analysis/debugging → `skills/opencart-project-analysis/SKILL.md`;
+- substantial existing project / architecture orientation → `skills/opencart-architecture-map/SKILL.md`;
 - module creation/structural changes → `skills/opencart-module-development/SKILL.md`;
+- visible frontend/admin UI, buttons/colors/themes/responsive work → `skills/opencart-ui-ux/SKILL.md`;
 - translations/multilingual data → `skills/opencart-i18n/SKILL.md`;
 - OCMOD/modification work → `skills/opencart-ocmod/SKILL.md`.
 
@@ -69,7 +78,9 @@ For OpenCart, it should normally cover the relevant subset of:
 - OpenCart version;
 - PHP target;
 - `admin/catalog/system` structure;
-- route/controller/model path;
+- existing architecture document and whether it is current;
+- route/controller/model/service path;
+- Core/Services/shared libraries;
 - languages and `language_id` behavior;
 - template/theme engine;
 - existing module implementation;
@@ -100,6 +111,8 @@ system/engine/
 system/config/
 *.ocmod.xml
 install.xml
+docs/ARCHITECTURE.md
+ARCHITECTURE.md
 ```
 
 Also locate:
@@ -112,6 +125,51 @@ Also locate:
 - schema/migrations;
 - generated/runtime modification output when available.
 
+## Living project architecture document
+
+For substantial target projects, maintain one authoritative architecture document.
+
+Preferred path:
+
+`docs/ARCHITECTURE.md`
+
+Before creating it, search for an existing equivalent and update that instead of duplicating documentation.
+
+`PROJECT_MAP.md` and `ARCHITECTURE.md` have different jobs:
+
+```text
+PROJECT_MAP.md
+→ quick project passport: versions, languages, theme, important paths, commands
+
+ARCHITECTURE.md
+→ relationships and navigation: Core, Services, modules, flows, data ownership,
+  OCMOD/events, integrations, cron, UI layers, and where to look first
+```
+
+The architecture document should normally map:
+
+- major directories/layers;
+- Core/shared libraries;
+- Services and their responsibilities;
+- controllers/models/repositories/adapters;
+- important modules/subsystems;
+- runtime flows;
+- tables/settings ownership;
+- languages/views/theme integration;
+- events/OCMOD interception points;
+- cron/background jobs;
+- external integrations;
+- UI/theme architecture;
+- security/permissions boundaries;
+- a practical `Where to look first` index;
+- architectural hazards and existing abstractions that must not be duplicated.
+
+Use `skills/opencart-architecture-map/SKILL.md` and `templates/ARCHITECTURE.md`.
+
+Read architecture early to accelerate work, but **verify task-relevant sections against current code before relying on them**. Code/config/runtime evidence wins when docs are stale.
+
+Update architecture documentation in the same task when structural boundaries, services, tables, hooks, integrations, jobs, or shared UI architecture materially change.
+
 ## Architecture standard
 
 Prefer:
@@ -119,7 +177,7 @@ Prefer:
 ```text
 thin OpenCart controller/integration layer
         ↓
-module model/service/library
+module Core / Services / model layer
         ↓
 data / OpenCart APIs / integrations
         ↓
@@ -133,6 +191,8 @@ For substantial modules, a module-owned `system/library/<module>/` layer is enco
 Keep responsibilities readable and explicit.
 
 Do not use obfuscation as an architecture pattern.
+
+Do not invent `Core` or `Services` layers in documentation when the existing project does not have them; document reality first and keep desired refactors separate as target architecture/TODOs.
 
 ## OCMOD policy
 
@@ -153,7 +213,8 @@ When OCMOD is used:
 - keep injected code small;
 - delegate to module-owned code;
 - inspect generated runtime modification output;
-- test refresh/update/conflict behavior.
+- test refresh/update/conflict behavior;
+- reflect architecture-significant interception points in the target `ARCHITECTURE.md`.
 
 ## Language policy
 
@@ -186,7 +247,8 @@ Before changing persistence:
 - use `DB_PREFIX`;
 - cast IDs and escape strings;
 - prefer explicit, idempotent migration/update logic;
-- preserve data during upgrades.
+- preserve data during upgrades;
+- update architecture data-ownership sections for material schema/ownership changes.
 
 Do not make destructive reset/reinstall the normal update strategy.
 
@@ -212,26 +274,40 @@ For install/update:
 
 are separate concerns and should be verifiable independently.
 
-## Template and theme policy
+## Template, UI and theme policy
 
 Use the target project's real view system.
 
 Do not create both TPL and Twig versions unless compatibility requirements justify both.
 
-Before frontend work, inspect:
+Before frontend/admin UI work, inspect:
 
 - active theme;
 - default theme fallback;
 - Journal3/custom controller/model overrides;
 - existing CSS/JS conventions;
+- existing design tokens/components;
 - OCMOD template injections.
+
+Frontend custom module UI is mobile-first. Admin module screens should be modern, responsive, and usable on narrow widths where practical.
+
+When a module exposes meaningful colors/buttons/cards/badges or other visual surfaces, prefer:
+
+```text
+theme preset(s)
++ Custom theme
++ centralized design tokens / CSS variables
+```
+
+Do not scatter hard-coded color values throughout templates and JavaScript.
 
 ## Existing implementation first
 
-Before creating a new module, field, table, route, helper, or JavaScript component, search for:
+Before creating a new module, field, table, route, helper, service, or JavaScript component, search for:
 
 - feature/product terminology;
 - likely route/class/function names;
+- existing Core/Services abstractions;
 - language keys;
 - config keys;
 - table/column names;
@@ -240,6 +316,8 @@ Before creating a new module, field, table, route, helper, or JavaScript compone
 - theme compatibility code.
 
 Extend existing abstractions when reasonable.
+
+Use the architecture document's `Where to look first` and `do-not-duplicate` sections as shortcuts, then confirm against code.
 
 ## Questions policy
 
@@ -265,11 +343,14 @@ Before completion, verify the relevant subset of:
 - no duplicated events/settings/modifications;
 - active language files and translated DB data;
 - catalog render in active theme;
+- responsive/mobile behavior for visible UI changes;
+- theme preset/custom-theme behavior when applicable;
 - AJAX response behavior;
 - OCMOD XML parse + refresh + generated patch;
 - totals/pagination/cache when product queries change;
 - multistore behavior;
 - uninstall/disable behavior;
+- architecture document reflects structural changes;
 - final diff contains no unrelated edits.
 
 State what could not be verified.
@@ -287,6 +368,8 @@ After substantial OpenCart work, determine whether a newly discovered pattern is
 
 Do not turn one site's custom hack into a universal rule.
 
+Project-specific architecture belongs in the target project's `docs/ARCHITECTURE.md`; reusable architectural rules belong in Openboost.
+
 ## Golden reference
 
 The initial architecture reference is derived from user-provided OCFilter 4.8.2 and documented at:
@@ -303,11 +386,14 @@ A change is done only when:
 
 - target project was analyzed first;
 - relevant Openboost skills were loaded;
-- existing implementation was searched;
+- existing architecture documentation was searched and task-relevant sections validated;
+- a missing architecture document was created for a substantial undocumented project when appropriate;
+- existing implementation/shared abstractions were searched;
 - real OpenCart version/PHP/template/language constraints were established;
 - duplicate functionality was avoided;
 - change uses the real architecture/integration path;
-- lifecycle/data/translation/OCMOD impacts were handled where relevant;
+- lifecycle/data/translation/OCMOD/UI impacts were handled where relevant;
+- structural changes were reflected in the target architecture document;
 - relevant validation was performed;
 - reusable new OpenCart knowledge was captured or proposed;
 - unresolved risks are explicit.
