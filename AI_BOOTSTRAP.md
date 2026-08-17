@@ -1,129 +1,286 @@
-# AI_BOOTSTRAP.md
+# AI_BOOTSTRAP.md — OpenCart Session Bootstrap
 
-Use this bootstrap at the beginning of a new AI-assisted development session in Openboost.
+Use this file when Openboost is supplied to an AI agent together with a real OpenCart project/task.
 
-## Phase 0 — Read before changing code
+The user should not have to explain where OpenCart controllers, languages, models, OCMOD, or translations live. Openboost provides that operating model; the agent must still inspect the real target repository before making assumptions.
+
+## Phase 0 — Identify the two repositories correctly
+
+When both are available:
+
+```text
+Openboost = instructions / reusable OpenCart knowledge
+Target repository = application/store/module to inspect and modify
+```
+
+Do not accidentally implement the requested store feature inside Openboost.
 
 Read:
 
 1. `AGENTS.md`
-2. `README.md`
-3. `docs/PROJECT_MAP.md`
-4. `docs/ROADMAP.md`
-5. all task-specific documentation found by search
+2. `skills/README.md`
+3. task-relevant skill files
+4. relevant architecture references
+5. `docs/OPEN_CART_LIVING_KNOWLEDGE.md`
 
-Then inspect the repository itself. Documentation may be incomplete or stale; code/config is the final source of truth.
+Then inspect the target repository.
 
-## Phase 1 — Repository discovery
+## Phase 1 — Tell the user what will be analyzed
 
-Build an evidence-backed view of the project.
+For a non-trivial task, send a short concrete update before editing.
 
-Determine, where applicable:
+Default OpenCart wording can be adapted from:
 
-- languages and runtime versions;
-- framework/platform and version;
-- dependency/package manager;
-- source layout;
-- application entry points;
-- routes/controllers/handlers/commands;
-- domain/services/models;
-- persistence and migrations;
-- templates/components/assets;
-- translations/locales;
-- background jobs/cron/workers;
-- build/test/lint/typecheck commands;
-- Docker/deployment/CI flow;
-- configuration and environment handling;
-- integrations and external APIs.
+> Спочатку аналізую сам OpenCart-проєкт: визначаю точну версію OpenCart і PHP, структуру admin/catalog/system, активні мови та спосіб перекладів, тему/TPL/Twig, існуючий модуль або реалізацію, OCMOD/events і таблиці/міграції. Після цього визначу найменшу правильну точку зміни й тільки тоді редагуватиму код.
 
-Do not guess missing facts.
+This is not ceremonial. Perform the inspection described.
 
-## Phase 2 — Search for existing implementation
+## Phase 2 — Confirm platform truth
 
-Before creating anything for the requested feature, search for:
+Determine from evidence:
 
-- feature/product terminology;
-- likely class/function/module names;
-- routes and endpoint fragments;
-- database table/field names;
-- UI labels/translations;
+```text
+OpenCart version
+PHP runtime/minimum
+admin route conventions
+catalog route conventions
+token vs user_token
+template engine(s)
+active/custom theme
+language folder codes
+language_id strategy
+multistore usage
+OCMOD source + generated runtime state
+events
+custom DB tables/settings
+install/update/uninstall lifecycle
+cron/jobs
+```
+
+Use `skills/opencart-project-analysis/SKILL.md`.
+
+### PHP policy
+
+Openboost default for new code is PHP 7.1+.
+
+If target evidence says:
+
+- PHP >= 7.1 → continue within confirmed minimum;
+- PHP >= 7.4/8.x → higher syntax may be allowed only if project compatibility confirms it;
+- PHP 5.6 → treat as a legacy compatibility conflict; do not silently write 7.1-only code and do not downgrade Openboost's general standard unless the task explicitly targets that legacy project.
+
+## Phase 3 — Find existing implementation
+
+Search before creating:
+
+- route/controller names;
+- module codes;
+- models/services/libraries;
 - config keys;
-- tests;
-- TODO/FIXME notes;
-- older/deprecated implementations.
+- language keys;
+- DB tables/columns;
+- templates/JS/CSS;
+- OCMOD codes/targets;
+- events;
+- old/disabled implementations;
+- Journal3/theme/SEO compatibility code.
 
-Answer these questions internally before coding:
+Trace the complete path, not only the first matching file.
 
-1. Does the feature already exist fully or partially?
-2. Is there an abstraction that should be extended?
-3. Is there compatibility or legacy behavior that must remain?
-4. Which files are true integration points?
-5. What is the smallest coherent change?
+For example:
 
-## Phase 3 — Update project memory
+```text
+Admin UI
+→ route/controller
+→ access/modify permission
+→ language route
+→ model
+→ DB/settings
+→ template/assets
+→ OCMOD/menu injection
+```
 
-Update `docs/PROJECT_MAP.md` with confirmed facts if the repository has changed or the map is incomplete.
+or:
 
-Do not fill the map with assumptions merely to make it look complete.
+```text
+Catalog request
+→ route/controller
+→ active theme
+→ model/query
+→ OCMOD/events
+→ module core/service
+→ template
+→ JS/CSS
+```
 
-## Phase 4 — Plan the change
+## Phase 4 — Load specialized skills
 
-For non-trivial tasks, update `docs/ROADMAP.md` or create a task-specific plan under `docs/plans/`.
+### Module work
 
-Record:
+Read:
 
-- requested outcome;
-- current implementation found;
-- affected areas;
-- compatibility constraints;
-- implementation sequence;
-- validation sequence;
-- migration/rollback concerns.
+`skills/opencart-module-development/SKILL.md`
 
-## Phase 5 — Implement by extension, not duplication
+before creating a module or changing its architecture/install/update lifecycle.
 
-Prefer:
+### Translation work
 
-1. configuring existing functionality;
-2. fixing/extending existing functionality;
-3. adding a narrow missing layer;
-4. creating a new subsystem only when repository evidence shows one does not already exist.
+Read:
 
-Match the project's existing coding and architectural conventions unless there is a concrete reason not to.
+`skills/opencart-i18n/SKILL.md`
 
-## Phase 6 — Verify
+before changing UI text, language tabs, description tables, `language_id`, or multilingual SEO.
 
-Use the repository's own commands first.
+### OCMOD work
 
-Validate as applicable:
+Read:
 
-- syntax;
-- build;
-- tests;
-- lint/type checks;
-- migrations;
-- API behavior;
-- UI behavior;
-- responsive states;
-- backward compatibility;
-- installation/update/uninstall lifecycle;
-- generated artifacts.
+`skills/opencart-ocmod/SKILL.md`
 
-Review the final diff and remove unrelated changes.
+before creating/editing modification XML or debugging runtime modified files.
 
-## Phase 7 — Handoff
+## Phase 5 — Produce the implementation map
+
+Before substantial code changes, establish internally:
+
+```text
+Current behavior:
+Existing implementation:
+OpenCart/PHP constraints:
+Affected admin files:
+Affected catalog files:
+Affected system/library files:
+Languages affected:
+DB/settings affected:
+OCMOD/events affected:
+Theme/Journal integration affected:
+Install/update/uninstall impact:
+Smallest coherent change:
+Verification path:
+```
+
+If the target project maintains its own `docs/PROJECT_MAP.md`, update it with confirmed reusable facts.
+
+## Phase 6 — Implement by extension, not duplication
+
+Preference order:
+
+1. configure/reuse existing behavior;
+2. fix existing behavior;
+3. extend existing controller/model/service;
+4. add a narrow missing module layer;
+5. create a new subsystem only when evidence shows one is needed.
+
+For new module architecture, favor:
+
+```text
+thin OpenCart integration
+→ module-owned model/service/library
+→ DB/OpenCart APIs
+→ view data
+→ template
+```
+
+## Phase 7 — Handle translations correctly
+
+If any user-visible text changes:
+
+- detect actual admin/catalog language folders;
+- add keys to every required active language;
+- avoid hard-coded UI strings;
+- keep translated entity content in `language_id`-keyed data structures/tables when appropriate;
+- verify new-language behavior if the module owns multilingual entities.
+
+For UA/RU projects, verify both language packs explicitly.
+
+## Phase 8 — Handle OCMOD safely
+
+If a core/third-party path must be intercepted:
+
+1. check whether an event/API can do it;
+2. inspect all modifications targeting the same file;
+3. verify the exact search anchor;
+4. keep XML injected logic thin;
+5. delegate to module-owned methods;
+6. refresh modifications;
+7. inspect generated runtime output;
+8. test conflict-sensitive routes.
+
+Do not assume original OpenCart source equals runtime source.
+
+## Phase 9 — Handle install/update/uninstall as separate behavior
+
+Verify as relevant:
+
+```text
+permissions
+events
+schema
+migrations
+default settings
+OCMOD state
+old-file cleanup
+cron/startup hooks
+uninstall disable/cleanup
+```
+
+Upgrade must preserve data by default.
+
+Uninstall should not purge business data unless explicitly designed to do so.
+
+## Phase 10 — Verify
+
+Run/perform the relevant subset:
+
+- PHP syntax under minimum version;
+- admin route + permissions;
+- save/validation;
+- active languages;
+- catalog render;
+- active theme/Journal integration;
+- AJAX/API responses;
+- clean install;
+- upgrade/migration;
+- repeated install/check idempotency;
+- OCMOD parse/refresh/generated result;
+- query totals/pagination/cache consistency;
+- multistore behavior;
+- uninstall/disable path;
+- final diff review.
+
+State exactly what could not be executed.
+
+## Phase 11 — Capture reusable OpenCart learning
+
+At the end of substantial work, read `docs/OPEN_CART_LIVING_KNOWLEDGE.md` and determine whether Openboost should learn something new.
+
+If Openboost is writable, update the correct skill/reference.
+
+If it is not writable, include a short `Openboost knowledge update` recommendation in the handoff.
+
+Project-specific hacks do not belong in the global bootstrap unless generalized and scoped.
+
+## Minimal user invocation
+
+A user can simply send something like:
+
+```text
+Use https://github.com/kabasik007/Openboost
+
+Ось OpenCart-проєкт / repo. Треба додати ...
+```
+
+The agent should automatically read Openboost, route to the correct skills, analyze the target project, and continue without asking the user to restate standard OpenCart conventions.
+
+## Handoff format
 
 At completion, report concisely:
 
-- what was found before implementation;
-- what was changed;
-- what was reused instead of rewritten;
-- tests/checks run and results;
-- any unverified areas or known risks;
-- documentation/migration actions required.
-
-## AI session starter prompt
-
-A human can start an AI session with:
-
-> Read `AGENTS.md` and `AI_BOOTSTRAP.md`. First inspect the repository and search for an existing implementation of my request. Do not rewrite or duplicate functionality that already exists. Update the project map with evidence-backed facts if needed, make a focused implementation plan, then implement and verify the change using the repository's own tooling.
+- what the target project actually uses;
+- what existing implementation was found;
+- what changed;
+- what was reused rather than rewritten;
+- translations/OCMOD/schema/lifecycle impact;
+- verification performed;
+- remaining risks;
+- reusable Openboost knowledge added or proposed.

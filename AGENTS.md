@@ -1,178 +1,313 @@
-# AGENTS.md — Openboost AI Development Rules
+# AGENTS.md — Openboost OpenCart AI Development Rules
 
-This file is the primary instruction entry point for AI coding agents working in this repository.
+This file is the primary instruction entry point for AI coding agents using Openboost.
+
+Openboost is **not an application repository**. It is a reusable OpenCart development bootstrap/knowledge base that should be supplied alongside the real target project.
+
+## One-link mode
+
+The user should be able to provide this repository plus an OpenCart task without explaining OpenCart architecture every time.
+
+When Openboost is present:
+
+1. Read this file.
+2. Read `AI_BOOTSTRAP.md`.
+3. Load task-relevant skills from `skills/README.md` automatically.
+4. Inspect the **target OpenCart project**, not only Openboost.
+5. Tell the user briefly what you are about to analyze before implementation.
+6. Find existing functionality before creating anything new.
+7. Implement only after the real integration path is understood.
+
+Do not ask the user which Openboost skill to use.
+
+## Default compatibility policy
+
+For new OpenCart development through Openboost:
+
+- **PHP 7.1+ is the default minimum.**
+- PHP 5.6 is legacy support and must be explicitly required by the task/project.
+- Never assume the exact OpenCart version; detect it from repository evidence.
+- Never assume TPL/Twig; detect the active template engine from the target project.
+- Never assume language folder codes; inspect the project's actual languages.
+
+If the target project proves incompatible with the baseline, report the conflict instead of silently guessing.
 
 ## Core rule
 
 **Do not rewrite, duplicate, or replace functionality before checking whether it already exists.**
 
-Before any implementation:
+Repository code/configuration is the source of truth.
 
-1. Inspect the repository structure.
-2. Search for existing code related to the requested task.
-3. Identify the real language, framework, versions, entry points, configuration, persistence layer, UI layer, tests, build/deploy flow, and conventions from repository evidence.
-4. Read existing documentation and comments.
-5. Reuse or extend existing abstractions whenever reasonable.
-6. Ask only for critical information that cannot be determined from the repository and that materially blocks a correct implementation.
+Before implementation:
 
-Repository code and configuration are the source of truth. Never guess a version or architecture when it can be verified.
+1. inspect the relevant OpenCart structure;
+2. search for existing routes/controllers/models/services/settings/tables/templates/language keys;
+3. inspect OCMOD/events that may alter the same runtime path;
+4. identify active languages/theme/template engine;
+5. identify the smallest coherent extension point;
+6. preserve compatibility and existing data unless the requested change intentionally breaks them.
 
-## Mandatory pre-implementation scan
+## Mandatory OpenCart skill routing
 
-For every non-trivial task, inspect at least:
+Read `skills/README.md` and load relevant skill files.
 
-- repository root;
-- README and project docs;
-- package/dependency manifests;
-- runtime/config files;
-- source directories;
-- application entry points;
-- routes/controllers/handlers/commands where applicable;
-- models/services/repositories/data access where applicable;
-- templates/components/assets where applicable;
-- migrations/schema/install scripts where applicable;
-- tests and CI workflows;
-- existing feature names, classes, functions, database tables, API endpoints, UI components, and config keys related to the requested change.
+At minimum:
 
-Use search before creating new concepts.
+- any existing-project analysis/debugging → `skills/opencart-project-analysis/SKILL.md`;
+- module creation/structural changes → `skills/opencart-module-development/SKILL.md`;
+- translations/multilingual data → `skills/opencart-i18n/SKILL.md`;
+- OCMOD/modification work → `skills/opencart-ocmod/SKILL.md`.
 
-## Evidence-first project memory
+A task can require more than one skill.
 
-Keep `docs/PROJECT_MAP.md` current. Facts added there must be backed by repository evidence.
+## Mandatory opening behavior for non-trivial work
 
-Use these states:
+Before editing, give the user a concise statement of what is being analyzed.
 
-- `confirmed` — verified from code/config/docs;
-- `inferred` — strongly implied but not directly declared;
-- `unknown` — not yet established.
+For OpenCart, it should normally cover the relevant subset of:
 
-Do not convert `unknown` into a guessed fact.
+- OpenCart version;
+- PHP target;
+- `admin/catalog/system` structure;
+- route/controller/model path;
+- languages and `language_id` behavior;
+- template/theme engine;
+- existing module implementation;
+- OCMOD/events;
+- database/install/update lifecycle.
 
-## Implementation behavior
+Do not pretend this inspection has already happened when it has not.
 
-Prefer the smallest coherent change that integrates with the existing system.
+## OpenCart repository discovery
 
-Do not:
+For a non-trivial task, inspect as applicable:
 
-- create a second implementation of an existing subsystem;
-- introduce a new framework/library without checking whether the project already has an equivalent;
-- rename or move public interfaces casually;
-- replace working code just to make it stylistically different;
-- perform broad refactors unrelated to the requested change;
-- add speculative compatibility code for environments not evidenced by the repository;
-- silently change persisted data contracts, API contracts, routes, configuration keys, or user-visible behavior.
+```text
+index.php
+admin/index.php
+config.php
+admin/config.php
+admin/controller/
+admin/model/
+admin/language/
+admin/view/
+catalog/controller/
+catalog/model/
+catalog/language/
+catalog/view/
+system/library/
+system/engine/
+system/config/
+*.ocmod.xml
+install.xml
+```
 
-When a task requires touching existing behavior, identify the current path first and preserve compatibility unless the task explicitly requires a breaking change.
+Also locate:
 
-## Questions policy
+- active theme/Journal3/custom theme integration;
+- SEO URL extensions;
+- custom search/filter/checkout modules;
+- cron/events;
+- install/update/uninstall code;
+- schema/migrations;
+- generated/runtime modification output when available.
 
-Do not ask questions that the repository can answer.
+## Architecture standard
 
-Good question conditions:
+Prefer:
 
-- a required compatibility target is genuinely absent;
-- multiple materially different product behaviors are possible and code cannot establish intent;
-- a destructive migration/deletion requires product confirmation;
-- a secret, external credential, provider choice, or business rule cannot be inferred safely.
+```text
+thin OpenCart controller/integration layer
+        ↓
+module model/service/library
+        ↓
+data / OpenCart APIs / integrations
+        ↓
+view data
+        ↓
+template
+```
 
-If work can proceed safely with a narrow assumption, document the assumption and continue instead of blocking unnecessarily.
+For substantial modules, a module-owned `system/library/<module>/` layer is encouraged when it clarifies shared behavior.
 
-## Planning
+Keep responsibilities readable and explicit.
 
-For substantial work, update `docs/ROADMAP.md` before or during implementation.
+Do not use obfuscation as an architecture pattern.
 
-A useful task plan should include:
+## OCMOD policy
 
-- objective;
-- existing implementation found;
-- files/subsystems likely affected;
-- compatibility constraints;
-- implementation steps;
-- validation steps;
-- migration/rollback concerns when relevant.
+OCMOD is not the default home for business logic.
 
-Do not make a roadmap that simply says “write code” and “test”.
+Preferred integration order:
 
-## Validation
+1. existing module/platform API;
+2. OpenCart event;
+3. module-owned adapter/wrapper;
+4. thin OCMOD patch;
+5. direct core edit only for an intentional maintained fork.
 
-Before calling work complete:
+When OCMOD is used:
 
-1. Run the most relevant available tests/checks.
-2. Verify syntax/build/type/lint checks if the repository provides them.
-3. Check integration points affected by the change.
-4. Check backward compatibility where relevant.
-5. Review the diff for accidental unrelated edits.
-6. Update documentation when architecture, configuration, setup, or public behavior changed.
+- inspect all modifications touching the target file;
+- verify the exact search anchor exists;
+- keep injected code small;
+- delegate to module-owned code;
+- inspect generated runtime modification output;
+- test refresh/update/conflict behavior.
 
-If a validation step cannot be run, state exactly what was not verified.
+## Language policy
 
-## Entry-point discovery
+Treat interface translations and multilingual entity data separately.
 
-Do not assume entry points. Find them from evidence such as:
+Interface strings:
 
-- package scripts;
-- `main`, `bin`, CLI definitions;
-- web server/bootstrap files;
-- framework routing configuration;
-- application factories;
-- service registration;
-- Docker/Compose commands;
-- CI invocation;
-- platform-specific extension hooks.
+```text
+admin/language/<actual-language>/...
+catalog/language/<actual-language>/...
+```
 
-Record confirmed entry points in `docs/PROJECT_MAP.md`.
+Entity/content translations:
+
+```text
+*_description tables keyed by language_id
+```
+
+Do not hard-code user-facing UA/RU strings in controllers/models/templates/JS when a language mechanism should be used.
+
+Do not assume Ukrainian/Russian folder aliases. Detect them from the target project.
 
 ## Database and migrations
 
 Before changing persistence:
 
-- inspect current schema/migrations/install/upgrade code;
-- search all reads/writes of the affected field/table/entity;
-- check indexes, foreign-key-like relations, compatibility code, and uninstall paths;
-- prefer an explicit migration/upgrade mechanism over runtime schema mutation in hot request paths.
+- inspect existing schema/install/upgrade code;
+- search every read/write of the affected entity;
+- inspect `language_id`, `store_id`, indexes, and relations;
+- use `DB_PREFIX`;
+- cast IDs and escape strings;
+- prefer explicit, idempotent migration/update logic;
+- preserve data during upgrades.
 
-Never invent table/column names without repository evidence.
+Do not make destructive reset/reinstall the normal update strategy.
 
-## UI work
+Uninstall should not automatically mean purge unless product requirements say so.
 
-Before creating UI:
+## Permissions and lifecycle
 
-- identify the existing template/component system;
-- find adjacent screens/components;
-- reuse design tokens, utilities, components, translations, and patterns;
-- inspect responsive/mobile behavior when relevant.
+For new admin routes, inspect/add access and modify permissions deliberately.
 
-Do not introduce a parallel design system for one feature.
+For events:
 
-## API/integration work
+- use stable module-prefixed codes;
+- avoid duplicates;
+- remove only owned events on uninstall/update.
 
-Before creating or changing an API/integration:
+For install/update:
 
-- inspect existing client/server abstractions;
-- locate authentication/error/retry/logging conventions;
-- search for existing provider adapters;
-- preserve response/request contracts unless intentionally changing them.
+- permissions;
+- events;
+- schema/migrations;
+- defaults;
+- OCMOD state;
 
-## Documentation hierarchy
+are separate concerns and should be verifiable independently.
 
-Read in this order when present:
+## Template and theme policy
 
-1. `AGENTS.md`
-2. `AI_BOOTSTRAP.md`
-3. task-specific docs
-4. `docs/PROJECT_MAP.md`
-5. `docs/ROADMAP.md`
-6. README/setup docs
-7. code/config as final source of truth when documentation is stale
+Use the target project's real view system.
+
+Do not create both TPL and Twig versions unless compatibility requirements justify both.
+
+Before frontend work, inspect:
+
+- active theme;
+- default theme fallback;
+- Journal3/custom controller/model overrides;
+- existing CSS/JS conventions;
+- OCMOD template injections.
+
+## Existing implementation first
+
+Before creating a new module, field, table, route, helper, or JavaScript component, search for:
+
+- feature/product terminology;
+- likely route/class/function names;
+- language keys;
+- config keys;
+- table/column names;
+- OCMOD codes;
+- disabled/legacy versions;
+- theme compatibility code.
+
+Extend existing abstractions when reasonable.
+
+## Questions policy
+
+Do not ask questions the target repository can answer.
+
+Ask only when a material decision cannot be established, such as:
+
+- truly unknown compatibility target;
+- destructive data behavior;
+- external credentials/provider choice;
+- multiple product behaviors with no repository evidence.
+
+If a safe narrow implementation can proceed, do it and document the assumption instead of blocking.
+
+## Validation
+
+Before completion, verify the relevant subset of:
+
+- PHP syntax under the declared minimum;
+- admin route/access/modify permissions;
+- install on clean schema;
+- update/migration from supported prior state;
+- no duplicated events/settings/modifications;
+- active language files and translated DB data;
+- catalog render in active theme;
+- AJAX response behavior;
+- OCMOD XML parse + refresh + generated patch;
+- totals/pagination/cache when product queries change;
+- multistore behavior;
+- uninstall/disable behavior;
+- final diff contains no unrelated edits.
+
+State what could not be verified.
+
+## Living knowledge rule
+
+Openboost must improve as OpenCart work continues.
+
+Read `docs/OPEN_CART_LIVING_KNOWLEDGE.md`.
+
+After substantial OpenCart work, determine whether a newly discovered pattern is reusable. If it is:
+
+- update the narrow relevant skill/reference when Openboost is writable;
+- otherwise include the proposed Openboost update in the handoff.
+
+Do not turn one site's custom hack into a universal rule.
+
+## Golden reference
+
+The initial architecture reference is derived from user-provided OCFilter 4.8.2 and documented at:
+
+`skills/references/ocfilter-4.8.2-architecture.md`
+
+Adopt its strong architectural patterns, especially separation, migrations, language-aware data, permissions/events, and thin OCMOD integration.
+
+Do **not** blindly copy its obfuscation, legacy PHP compatibility, giant controllers, broad third-party patches, or storage assumptions.
 
 ## Definition of done
 
 A change is done only when:
 
-- existing implementation was inspected first;
+- target project was analyzed first;
+- relevant Openboost skills were loaded;
+- existing implementation was searched;
+- real OpenCart version/PHP/template/language constraints were established;
 - duplicate functionality was avoided;
-- the change is integrated into the real architecture;
+- change uses the real architecture/integration path;
+- lifecycle/data/translation/OCMOD impacts were handled where relevant;
 - relevant validation was performed;
-- compatibility/migration implications were handled;
-- project documentation is updated when needed;
-- unresolved risks are explicitly stated.
+- reusable new OpenCart knowledge was captured or proposed;
+- unresolved risks are explicit.

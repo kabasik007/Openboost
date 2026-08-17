@@ -1,155 +1,136 @@
-# Openboost Development Roadmap
+# Openboost Roadmap
 
-This roadmap is intentionally architecture-neutral until real application code is added.
+Openboost is a living OpenCart AI development bootstrap. This roadmap tracks the knowledge system itself, not a customer/store implementation.
 
-AI agents should update it from repository evidence and the active product task rather than inventing milestones.
+## Phase 0 — Core bootstrap
 
-## Phase 0 — Resolve blockers
+Status: **done**
 
-**Objective:** establish only the unknowns that materially affect implementation.
+- `AGENTS.md` entry rules;
+- `AI_BOOTSTRAP.md` session workflow;
+- evidence-first analysis;
+- existing-implementation-first policy;
+- project map and roadmap foundation.
 
-Check:
+## Phase 1 — OpenCart core knowledge pack
 
-- runtime/framework compatibility;
-- target platforms/environments;
-- existing implementation of the requested feature;
-- potentially destructive data/API changes;
-- external dependencies or credentials.
-
-**Exit gate:** implementation can proceed without guessing critical constraints.
-
-## Phase 1 — Confirm repository truth
-
-**Objective:** understand the actual project before changing it.
+Status: **done — initial version**
 
 Deliverables:
 
-- current `docs/PROJECT_MAP.md`;
-- confirmed source structure;
-- confirmed entry points;
-- confirmed test/build/deploy commands;
-- relevant existing components located by search.
+- OpenCart project-analysis skill;
+- module-development architecture skill;
+- language/i18n skill;
+- OCMOD skill;
+- PHP 7.1+ default compatibility policy;
+- automatic skill routing;
+- required first analysis update to the user.
 
-**Exit gate:** affected architecture and integration points are known.
+Reference source: OCFilter 4.8.2 architecture analysis.
 
-## Phase 2 — Define change contract
+## Phase 2 — Continuous refinement from real projects
 
-**Objective:** translate the requested work into observable behavior.
+Status: **active / ongoing**
 
-Document as applicable:
+After substantial OpenCart work:
 
-- current behavior;
-- desired behavior;
-- inputs/outputs;
-- UI/API/data contract changes;
-- compatibility requirements;
-- non-goals.
+1. identify reusable lessons;
+2. distinguish universal vs project-specific behavior;
+3. update the narrow skill/reference;
+4. correct stale instructions;
+5. record major policy evolution in `docs/OPEN_CART_LIVING_KNOWLEDGE.md`.
 
-**Exit gate:** the implementation target is unambiguous enough to build and verify.
+Exit gate: never final — this is the permanent improvement loop.
 
-## Phase 3 — Prepare implementation boundaries
+## Phase 3 — OpenCart 2.3 deep pack
 
-**Objective:** choose the smallest coherent integration path.
+Status: **planned when evidence accumulates**
 
-Identify:
+Potential topics:
 
-- files/modules to extend;
-- interfaces/contracts to preserve;
-- data migration requirements;
-- tests to update/add;
-- rollback concerns.
+- exact 2.3 route/controller/model/view conventions;
+- token and permission helpers;
+- extension installer/modification behavior;
+- TPL + custom Twig loaders;
+- event differences;
+- `url_alias`/SEO patterns;
+- safe PHP 7.1 modernization for 2.3 projects;
+- common Journal3 integration points.
 
-**Exit gate:** no unnecessary parallel subsystem is being introduced.
+Do not fill this pack from memory; build it from inspected real projects/reference source.
 
-## Phase 4 — Implement
+## Phase 4 — Journal3 compatibility skill
 
-**Objective:** implement the requested behavior using the existing architecture.
+Status: **planned**
 
-Rules:
+Candidate scope:
 
-- reuse before creating;
-- modify the narrowest correct layer;
-- preserve compatibility unless intentionally changed;
-- keep unrelated refactors out of scope.
+- Journal3 controller/model replacements;
+- template/view behavior on OpenCart 2.3;
+- module positions/layout integration;
+- filters/search/checkout interception;
+- asset loading;
+- OCMOD conflicts;
+- theme-safe UI work.
 
-**Exit gate:** requested behavior is implemented end-to-end.
+Create only after enough repeatable evidence exists.
 
-## Phase 5 — Integrate
+## Phase 5 — Module packaging and release standard
 
-**Objective:** wire the implementation into all required lifecycle points.
+Status: **planned**
 
-Examples where applicable:
+Candidate deliverables:
 
-- routes/handlers;
-- UI/templates;
-- configuration;
-- permissions/auth;
-- install/update/uninstall hooks;
-- jobs/workers;
-- external adapters.
+- `.ocmod.zip` package layouts by OpenCart generation;
+- version metadata;
+- install/update/uninstall lifecycle;
+- upgrade migrations;
+- release notes;
+- clean-install and upgrade test matrix;
+- GitHub Actions/static syntax checks under PHP compatibility targets.
 
-**Exit gate:** functionality is reachable through the real application path.
+## Phase 6 — Module audit skill
 
-## Phase 6 — Data and backward compatibility
+Status: **planned**
 
-**Objective:** make schema/config/state changes safe.
+A reusable audit should inspect:
 
-Validate as applicable:
+- architecture separation;
+- permissions;
+- language completeness;
+- schema/migrations;
+- SQL safety;
+- OCMOD fragility;
+- events;
+- multistore;
+- template/theme compatibility;
+- PHP minimum compatibility;
+- install/update/uninstall safety;
+- stale files/legacy code;
+- duplicate functionality.
 
-- migrations/upgrades;
-- existing data behavior;
-- defaults for old installations;
-- rollback/uninstall behavior;
-- API/config compatibility.
+## Phase 7 — Compatibility packs
 
-**Exit gate:** upgrade path is explicit and safe enough for the target environment.
+Status: **future**
 
-## Phase 7 — Verification and regression
+Potential scoped packs:
 
-**Objective:** prove the focused change and important surrounding behavior.
+- OpenCart 3.x;
+- OpenCart 4.x;
+- SEO modules;
+- multistore;
+- common checkout/search/filter modules.
 
-Run available project checks:
+Compatibility must be evidence-based and scoped. Openboost should not become a pile of speculative patches for software the user does not run.
 
-- build;
-- tests;
-- syntax/lint/type/static analysis;
-- migration validation;
-- targeted manual/integration verification.
+## Definition of Done for a new Openboost knowledge update
 
-Also review the final diff for unrelated changes.
-
-**Exit gate:** relevant checks pass or unverified areas are explicitly documented.
-
-## Phase 8 — Documentation and handoff
-
-**Objective:** leave the repository understandable for the next developer/AI session.
-
-Update when applicable:
-
-- `README.md`;
-- `docs/PROJECT_MAP.md`;
-- setup/config docs;
-- API/data docs;
-- release/migration notes.
-
-Handoff must state:
-
-- what existed before;
-- what changed;
-- what was reused;
-- verification performed;
-- remaining risks/TODOs.
-
-## Definition of Done
-
-A feature/change is complete when:
-
-- [ ] repository and relevant existing code were inspected first;
-- [ ] duplicate implementation was avoided;
-- [ ] real entry/integration points were used;
-- [ ] compatibility impact was considered;
-- [ ] migrations/config changes are explicit where relevant;
-- [ ] relevant verification was run;
-- [ ] unrelated edits were excluded;
-- [ ] documentation/project map was updated where needed;
-- [ ] unresolved risks are recorded.
+- [ ] based on inspected code or confirmed project behavior;
+- [ ] scope/version/theme is clear;
+- [ ] does not contradict PHP 7.1+ baseline without explicitly changing policy;
+- [ ] separates general rule from one-site workaround;
+- [ ] added to the narrowest appropriate skill/reference;
+- [ ] linked from the skill router if a new skill was created;
+- [ ] no proprietary third-party source code copied into Openboost unnecessarily;
+- [ ] instruction is actionable for the next AI agent;
+- [ ] stale/conflicting guidance updated at the same time.

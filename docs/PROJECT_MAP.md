@@ -2,105 +2,104 @@
 
 Status legend:
 
-- **confirmed** — verified from repository evidence
+- **confirmed** — verified from repository/user requirement
 - **inferred** — strongly implied but not directly declared
-- **unknown** — not established yet
+- **unknown** — not established
 
 ## Repository
 
 - Repository: `kabasik007/Openboost` — **confirmed**
 - Default branch: `main` — **confirmed**
 - Visibility: public — **confirmed**
-- State when AI bootstrap was introduced: empty repository — **confirmed**
 
 ## Product purpose
 
-- Purpose: **unknown**
+- Reusable AI bootstrap/knowledge base for **OpenCart development** — **confirmed**.
+- Intended usage: user supplies Openboost together with a real OpenCart project/task; AI reads Openboost and automatically understands the standard analysis/development workflow — **confirmed**.
+- Openboost itself is not the target store/application — **confirmed**.
 
-Do not infer the product purpose from the repository name alone. Replace this section only when code or explicit project documentation establishes it.
+## Compatibility policy
 
-## Runtime / language
+- Default PHP minimum for newly developed OpenCart code: **PHP 7.1+** — **confirmed**.
+- PHP 5.6: legacy-only and must be explicitly required — **confirmed**.
+- Exact OpenCart version: must be detected from the target project — **confirmed**.
+- OpenCart 2.3-style architecture: important first-class target, but not universal — **confirmed**.
+- Template engine: detect from target project; do not assume TPL/Twig — **confirmed**.
+- Language folder aliases: detect from target project — **confirmed**.
 
-- Primary language: **unknown**
-- Runtime version: **unknown**
-- Framework/platform: **unknown**
-- Framework/platform version: **unknown**
-- Package manager: **unknown**
-
-## Source structure
-
-No application source structure exists yet.
-
-When code is added, document only the important architectural directories, for example:
+## Knowledge structure
 
 ```text
-src/        -> application source
-app/        -> application layer
-web/        -> web entry/assets
-api/        -> API layer
-cli/        -> command-line entry points
-migrations/ -> schema changes
-tests/      -> automated tests
+AGENTS.md
+  → top-level rules for every AI session
+
+AI_BOOTSTRAP.md
+  → complete OpenCart session workflow
+
+skills/README.md
+  → automatic skill router
+
+skills/opencart-project-analysis/SKILL.md
+  → repository analysis and debugging path
+
+skills/opencart-module-development/SKILL.md
+  → module architecture and lifecycle
+
+skills/opencart-i18n/SKILL.md
+  → languages/translations/language_id
+
+skills/opencart-ocmod/SKILL.md
+  → OCMOD design/debugging/conflicts
+
+skills/references/
+  → derived architecture lessons from concrete modules
+
+docs/OPEN_CART_LIVING_KNOWLEDGE.md
+  → continuous-learning policy
 ```
 
-The examples above are not proposed Openboost directories; they are placeholders showing what to document after discovery.
+## Initial architecture reference
 
-## Entry points
+- Source analyzed: user-provided OCFilter 4.8.2 package — **confirmed**.
+- Original third-party source archive is not committed to Openboost — **confirmed**.
+- Derived reference: `skills/references/ocfilter-4.8.2-architecture.md` — **confirmed**.
 
-- Application entry point(s): **unknown**
-- CLI entry point(s): **unknown**
-- Web/API entry point(s): **unknown**
-- Worker/cron entry point(s): **unknown**
+Important reusable OCFilter lessons captured:
 
-## Configuration
+- thin OpenCart integration + module-owned core/library;
+- separated admin controllers/models;
+- version compatibility adapter;
+- explicit install permissions/events/database steps;
+- idempotent repair/update checks;
+- schema/data migration instead of reset;
+- UI language files vs `language_id` content tables;
+- new-language lifecycle;
+- TPL/Twig compatibility only when needed;
+- thin OCMOD delegation and runtime modification verification;
+- isolated third-party/theme/SEO compatibility.
 
-- Environment configuration: **unknown**
-- Main config files: **unknown**
-- Secrets handling: **unknown**
+## Knowledge-growth policy
 
-## Persistence
+- Openboost is a living bootstrap — **confirmed**.
+- After substantial OpenCart tasks, reusable lessons should update the narrow relevant skill/reference when Openboost is writable — **confirmed**.
+- Project-specific hacks must not be promoted to global rules without generalization/scope — **confirmed**.
 
-- Database/storage: **unknown**
-- Schema definition: **unknown**
-- Migration mechanism: **unknown**
+## Future project-map behavior
 
-## UI
+This file maps **Openboost itself**.
 
-- UI technology: **unknown**
-- Template/component system: **unknown**
-- Styling/design system: **unknown**
-- Localization: **unknown**
+When Openboost is used with a target OpenCart repository, the target project's architecture should be recorded in that target repository's own project map/docs where available. Do not overwrite this file with one customer's store-specific paths.
 
-## External integrations
+## Open questions / future knowledge packs
 
-- **unknown**
+The following are not yet dedicated skills and may be added as repeated real-world work justifies them:
 
-## Tests and quality checks
-
-- Test framework: **unknown**
-- Build command: **unknown**
-- Test command: **unknown**
-- Lint command: **unknown**
-- Typecheck/static analysis: **unknown**
-
-## CI/CD and deployment
-
-- CI: **unknown**
-- Deployment target: **unknown**
-- Packaging/release process: **unknown**
-
-## Architecture notes
-
-No application architecture has been established yet.
-
-### Rule for future updates
-
-When updating this map, include concrete paths or config names where useful. Example:
-
-```text
-Framework: Laravel 11 — confirmed from composer.json
-HTTP entry: public/index.php — confirmed
-Routes: routes/web.php, routes/api.php — confirmed
-```
-
-Never record guesses as confirmed facts.
+- Journal3-specific integration patterns;
+- OpenCart 2.3 deep compatibility pack;
+- OpenCart 3.x/4.x compatibility packs;
+- extension packaging/release workflow;
+- cron/background processing patterns;
+- multistore deep-dive;
+- SEO URL compatibility matrix;
+- migration/versioning standard for SiteZilla/Openboost modules;
+- automated module quality/audit checklist.
