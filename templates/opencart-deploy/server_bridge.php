@@ -12,18 +12,16 @@ $CONFIG = array(
     'max_clock_skew' => 180,
     'max_body_bytes' => 1024 * 1024 * 2,
     'opencart_config' => dirname(__FILE__) . '/../config.php',
+    'admin_dir' => 'admin',
     'audit_log' => dirname(__FILE__) . '/deploy-audit.log',
+    'nonce_dir' => dirname(__FILE__) . '/deploy-nonces',
     'ocmod_refresh_adapter' => dirname(__FILE__) . '/oc23_refresh_adapter.php',
     'allowed_ocmod_code_prefixes' => array('sitezilla_', 'jako_'),
     'allow_opcache_reset' => false,
-    // Configure real project paths. Empty/non-existing paths are skipped.
+    // Replace these placeholders with the exact cache directories used by the target site.
     'cache_profiles' => array(
-        'journal_templates' => array(
-            dirname(__FILE__) . '/../system/storage/cache/',
-        ),
-        'journal_assets' => array(
-            dirname(__FILE__) . '/../system/storage/cache/',
-        ),
+        'journal_templates' => array(),
+        'journal_assets' => array(),
     ),
 );
 
@@ -63,6 +61,32 @@ function secure_equals($a, $b) {
     return $diff === 0;
 }
 
+function register_nonce($config, $nonce, $timestamp) {
+    $dir = $config['nonce_dir'];
+    if (!is_dir($dir) && !@mkdir($dir, 0700, true)) {
+        throw new Exception('Cannot create nonce directory.');
+    }
+
+    // Opportunistic cleanup of expired nonces.
+    $expiresBefore = time() - ((int)$config['max_clock_skew'] * 2);
+    $files = glob(rtrim($dir, '/\\') . DIRECTORY_SEPARATOR . '*.nonce');
+    if ($files) {
+        foreach ($files as $file) {
+            if (@filemtime($file) < $expiresBefore) {
+                @unlink($file);
+            }
+        }
+    }
+
+    $path = rtrim($dir, '/\\') . DIRECTORY_SEPARATOR . hash('sha256', $nonce) . '.nonce';
+    $fh = @fopen($path, 'x');
+    if (!$fh) {
+        throw new Exception('Replay nonce rejected.');
+    }
+    fwrite($fh, (string)$timestamp);
+    fclose($fh);
+}
+
 function require_auth($config, $body) {
     $timestamp = header_value('X-Deploy-Timestamp');
     $nonce = header_value('X-Deploy-Nonce');
@@ -83,6 +107,12 @@ function require_auth($config, $body) {
     if (!secure_equals($expected, $signature)) {
         respond(false, array('error' => 'Invalid signature.'), 401);
     }
+
+    try {
+        register_nonce($config, $nonce, $timestamp);
+    } catch (Exception $e) {
+        respond(false, array('error' => $e->getMessage()), 409);
+    }
 }
 
 function load_opencart_config($path) {
@@ -102,7 +132,7 @@ function db_connect() {
     $port = defined('DB_PORT') ? DB_PORT : 3306;
     $db = @new mysqli(DB_HOSTNAME, DB_USERNAME, DB_PASSWORD, DB_DATABASE, $port);
     if ($db->connect_errno) {
-        respond(false, array('error' => 'Database connection failed.'), 500);
+        throw new Exception('Database connection failed.');
     }
     $db->set_charset('utf8');
     return $db;
@@ -156,12 +186,33 @@ function xml_meta_and_normalize($xml, $canonicalCode) {
     );
 }
 
-function regex_is_safe_owned($canonicalCode, $regex) {
+function regex_is_safe_owned($regex) {
     if (!is_string($regex) || strlen($regex) < 6 || strlen($regex) > 300) {
         return false;
     }
-    // Require anchored regex so a config typo cannot wipe unrelated rows.
     return substr($regex, 0, 1) === '^' && substr($regex, -1) === '$';
+}
+
+function find_modification_by_code($db, $table, $canonical) {
+    $stmt = $db->prepare("SELECT modification_id, status FROM `" . $table . "` WHERE code = ? ORDER BY modification_id ASC LIMIT 1");
+    if (!$stmt) {
+        throw new Exception('Cannot prepare OCMOD lookup query.');
+    }
+    $stmt->bind_param('s', $canonical);
+    $stmt->execute();
+    $stmt->store_result();
+
+    $id = 0;
+    $status = 0;
+    if ($stmt->num_rows > 0) {
+        $stmt->bind_result($id, $status);
+        $stmt->fetch();
+        $row = array('modification_id' => (int)$id, 'status' => (int)$status);
+    } else {
+        $row = null;
+    }
+    $stmt->close();
+    return $row;
 }
 
 function ocmod_upsert($config, $payload) {
@@ -183,23 +234,25 @@ function ocmod_upsert($config, $payload) {
     $meta = xml_meta_and_normalize($xml, $canonical);
     $db = db_connect();
     $table = DB_PREFIX . 'modification';
-
-    $stmt = $db->prepare("SELECT modification_id, status FROM `" . $table . "` WHERE code = ? ORDER BY modification_id ASC");
-    $stmt->bind_param('s', $canonical);
-    $stmt->execute();
-    $result = $stmt->get_result();
-    $row = $result ? $result->fetch_assoc() : null;
-    $stmt->close();
+    $row = find_modification_by_code($db, $table, $canonical);
 
     if ($row) {
         $id = (int)$row['modification_id'];
         $stmt = $db->prepare("UPDATE `" . $table . "` SET name=?, code=?, author=?, version=?, link=?, xml=?, status=?, date_added=NOW() WHERE modification_id=?");
+        if (!$stmt) {
+            $db->close();
+            throw new Exception('Cannot prepare OCMOD update query.');
+        }
         $stmt->bind_param('ssssssii', $meta['name'], $canonical, $meta['author'], $meta['version'], $meta['link'], $meta['xml'], $status, $id);
         $stmt->execute();
         $stmt->close();
         $mode = 'updated';
     } else {
         $stmt = $db->prepare("INSERT INTO `" . $table . "` SET name=?, code=?, author=?, version=?, link=?, xml=?, status=?, date_added=NOW()");
+        if (!$stmt) {
+            $db->close();
+            throw new Exception('Cannot prepare OCMOD insert query.');
+        }
         $stmt->bind_param('ssssssi', $meta['name'], $canonical, $meta['author'], $meta['version'], $meta['link'], $meta['xml'], $status);
         $stmt->execute();
         $id = (int)$db->insert_id;
@@ -207,16 +260,16 @@ function ocmod_upsert($config, $payload) {
         $mode = 'inserted';
     }
 
-    // Remove only explicit, anchored, owned legacy patterns. Never fuzzy-delete.
     $removed = array();
     if ($legacy) {
         $res = $db->query("SELECT modification_id, code FROM `" . $table . "` WHERE code <> '" . $db->real_escape_string($canonical) . "'");
         while ($res && ($candidate = $res->fetch_assoc())) {
             foreach ($legacy as $regex) {
-                if (!regex_is_safe_owned($canonical, $regex)) {
+                if (!regex_is_safe_owned($regex)) {
                     continue;
                 }
-                if (@preg_match('/' . str_replace('/', '\\/', $regex) . '/', $candidate['code']) === 1 && allowed_code($config, $candidate['code'])) {
+                $pattern = '/' . str_replace('/', '\\/', $regex) . '/';
+                if (@preg_match($pattern, $candidate['code']) === 1 && allowed_code($config, $candidate['code'])) {
                     $candidateId = (int)$candidate['modification_id'];
                     $db->query("DELETE FROM `" . $table . "` WHERE modification_id=" . $candidateId . " LIMIT 1");
                     $removed[] = $candidate['code'];
@@ -227,7 +280,13 @@ function ocmod_upsert($config, $payload) {
     }
 
     $db->close();
-    return array('mode' => $mode, 'modification_id' => $id, 'code' => $canonical, 'version' => $meta['version'], 'removed_legacy_codes' => $removed);
+    return array(
+        'mode' => $mode,
+        'modification_id' => $id,
+        'code' => $canonical,
+        'version' => $meta['version'],
+        'removed_legacy_codes' => $removed
+    );
 }
 
 function clear_directory_contents($path) {
@@ -250,10 +309,8 @@ function clear_directory_contents($path) {
         }
         if ($item->isDir()) {
             @rmdir($item->getPathname());
-        } else {
-            if (@unlink($item->getPathname())) {
-                $count++;
-            }
+        } elseif (@unlink($item->getPathname())) {
+            $count++;
         }
     }
     return $count;
@@ -262,6 +319,9 @@ function clear_directory_contents($path) {
 function cache_clear($config, $profile) {
     if (!isset($config['cache_profiles'][$profile]) || !is_array($config['cache_profiles'][$profile])) {
         throw new Exception('Unknown cache profile.');
+    }
+    if (!$config['cache_profiles'][$profile]) {
+        throw new Exception('Cache profile is configured but has no explicit paths.');
     }
     $deleted = 0;
     foreach ($config['cache_profiles'][$profile] as $path) {
@@ -279,7 +339,7 @@ function ocmod_refresh($config) {
     if (!is_callable($callable)) {
         throw new Exception('OCMOD refresh adapter must return a callable.');
     }
-    return call_user_func($callable);
+    return call_user_func($callable, $config);
 }
 
 $body = file_get_contents('php://input');
@@ -316,7 +376,10 @@ try {
         throw new Exception('Unknown action.');
     }
 
-    audit($CONFIG, $action, array('result' => $result, 'ip' => isset($_SERVER['REMOTE_ADDR']) ? $_SERVER['REMOTE_ADDR'] : ''));
+    audit($CONFIG, $action, array(
+        'result' => $result,
+        'ip' => isset($_SERVER['REMOTE_ADDR']) ? $_SERVER['REMOTE_ADDR'] : ''
+    ));
     respond(true, array('action' => $action, 'result' => $result));
 } catch (Exception $e) {
     audit($CONFIG, 'error', array('action' => $action, 'message' => $e->getMessage()));
