@@ -2,7 +2,7 @@
 
 **Openboost is a reusable AI bootstrap for OpenCart development.**
 
-The goal is simple: give an AI agent this repository plus the real OpenCart project/task, and the agent should already know how to inspect OpenCart architecture, modules, languages, translations, OCMOD, install/update lifecycle, and where to look before changing code.
+The goal is simple: give an AI agent this repository plus the real OpenCart project/task, and the agent should already know how to inspect OpenCart architecture, modules, languages, translations, OCMOD, UI/theme rules, Git/GitHub workflow, install/update lifecycle, and where to look before changing code.
 
 ## Minimal usage
 
@@ -15,16 +15,19 @@ Use https://github.com/kabasik007/Openboost
 The agent should then automatically:
 
 1. read `AGENTS.md` and `AI_BOOTSTRAP.md`;
-2. load relevant OpenCart skills;
+2. load relevant Openboost skills;
 3. analyze the target project's real OpenCart/PHP version;
-4. detect languages, template engine/theme, modules, OCMOD/events, DB/install lifecycle;
-5. find the existing implementation first;
-6. explain briefly what it is analyzing;
-7. make the smallest correct change;
-8. verify it;
-9. capture reusable OpenCart knowledge back into Openboost when appropriate.
+4. find/validate or create the living architecture map;
+5. detect languages, template engine/theme, modules, OCMOD/events, DB/install lifecycle;
+6. find the existing implementation first;
+7. explain briefly what it is analyzing;
+8. when the project is GitHub-backed, create/reuse a task branch instead of normally working directly on the default branch;
+9. make the smallest correct change and verify it;
+10. publish through intentional commits + PR when write access is available;
+11. maintain version/changelog/tag/GitHub Release history when a release-worthy version is produced;
+12. capture reusable OpenCart knowledge back into Openboost when appropriate.
 
-## Default compatibility
+## Default compatibility and development policy
 
 ```text
 PHP minimum for new development: 7.1+
@@ -32,6 +35,12 @@ PHP 5.6: legacy-only, explicit requirement
 OpenCart version: always detect from target project
 Template engine: always detect from target project
 Languages: detect actual folder codes and language_id behavior
+Frontend UI: mobile-first
+Admin UI: modern + responsive where practical
+Project architecture: living code-backed docs/ARCHITECTURE.md or existing equivalent
+GitHub writes: task branch + PR by default
+Versioning: Semantic Versioning by default when no stronger project policy exists
+Release history: CHANGELOG + immutable vX.Y.Z tag + GitHub Release
 ```
 
 OpenCart 2.3-style module architecture remains a first-class target, but Openboost must not assume every project is 2.3.
@@ -39,11 +48,44 @@ OpenCart 2.3-style module architecture remains a first-class target, but Openboo
 ## Skills
 
 - `skills/opencart-project-analysis/SKILL.md` — where to look and how to trace an existing OpenCart project.
+- `skills/opencart-architecture-map/SKILL.md` — living `ARCHITECTURE.md`, Core/Services/module/data ownership and runtime navigation map.
 - `skills/opencart-module-development/SKILL.md` — module architecture, install/update/uninstall, migrations, permissions/events, services/models/views.
+- `skills/opencart-ui-ux/SKILL.md` — mobile-first frontend, modern admin UI, theme presets/custom themes and design tokens.
 - `skills/opencart-i18n/SKILL.md` — admin/catalog language files, UA/RU, `language_id`, multilingual entity data and SEO.
 - `skills/opencart-ocmod/SKILL.md` — safe OCMOD design, refresh, runtime debugging and conflicts.
+- `skills/git-github-workflow/SKILL.md` — task branches, commits, PRs, SemVer, changelog, tags, GitHub Releases and release artifacts.
 
 See `skills/README.md` for automatic routing rules.
+
+## GitHub history and releases
+
+When Openboost is used against a GitHub-backed target repository, normal development should follow:
+
+```text
+default branch
+      ↓
+task branch
+      ↓
+implementation + validation
+      ↓
+intentional commit(s)
+      ↓
+pull request
+      ↓
+merge
+      ↓
+release-worthy change?
+      ↓ yes
+VERSION / module version + CHANGELOG
+      ↓
+vX.Y.Z tag
+      ↓
+GitHub Release + installable artifacts
+```
+
+Do not overwrite published tags to hide mistakes. Fix the code and publish a new PATCH/MINOR/MAJOR version as appropriate.
+
+Openboost itself has a root `VERSION`, `CHANGELOG.md`, release workflow and PR template so it can follow the same history rules it recommends.
 
 ## Golden architecture reference
 
