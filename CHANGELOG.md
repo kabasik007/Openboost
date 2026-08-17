@@ -8,6 +8,27 @@ Openboost uses Semantic Versioning unless a future documented policy replaces it
 
 No unreleased changes yet.
 
+## [0.2.0] - 2026-08-17
+
+### Added
+- OpenCart deployment skill for Git-to-server workflows.
+- Local incremental deployment agent with Git diff tracking, FTP/FTPS upload, backups, health checks and deployment state.
+- Signed server-side PHP deployment bridge for privileged OpenCart deployment actions.
+- OpenCart 2.3 OCMOD refresh adapter that rebuilds the generated modification tree instead of deleting a single generated file.
+- Automatic deployment-skill routing for tasks involving branch watching, FTP/FTPS/SFTP, OCMOD installation/update, cache refresh, backup/rollback and server bridges.
+- Reusable `templates/opencart-deploy/` starter package with agent, bridge, project config and documentation.
+- Nonce replay protection for signed deployment bridge requests.
+
+### Changed
+- OCMOD deployment guidance now requires a stable canonical `<code>` while release/version identity belongs in `<version>`, package metadata and Git tags.
+- Legacy versioned OCMOD rows must be cleaned only by explicit owned patterns rather than fuzzy substring deletion.
+- Deployment cache clearing is explicit/profile-driven; template cache profiles ship empty until a real target project's paths are confirmed.
+- Deployment defaults are incremental, reversible and version-adapter based rather than full blind uploads or one-size-fits-all cache deletion.
+
+### Security
+- Deployment bridge calls require signed HMAC requests with timestamp/nonce validation and replay protection.
+- Arbitrary SQL/shell execution and public MySQL exposure are explicitly excluded from the deployment architecture.
+
 ## [0.1.0] - 2026-08-17
 
 ### Added
