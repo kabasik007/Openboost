@@ -6,7 +6,19 @@ Openboost uses Semantic Versioning unless a future documented policy replaces it
 
 ## [Unreleased]
 
-No unreleased changes yet.
+### Added
+- OpenCart deployment skill covering Git branch monitoring, incremental deployment, backups, health checks and rollback.
+- Reusable local Python deployment agent with Git diff tracking and FTP/FTPS upload of `upload/` contents to the OpenCart root.
+- HMAC-authenticated PHP server bridge for canonical OCMOD upserts, controlled cache actions, audit logging and optional OPcache reset.
+- OpenCart 2.3 OCMOD refresh adapter that rebuilds generated modification files from base, file-based and enabled DB modifications.
+- Reusable per-project deployment configuration and setup documentation.
+
+### Changed
+- OCMOD deployment guidance now requires a stable canonical `<code>` across versions; release version belongs in `<version>` and release metadata instead of changing ownership identity.
+- Legacy versioned OCMOD rows may be cleaned only through explicit anchored owned-code patterns.
+- OpenCart 2.3 deployment guidance treats modification refresh as a full generated-tree rebuild rather than deleting one generated file.
+- Cache invalidation during deploy is modeled as explicit allowlisted profiles instead of blindly deleting every cache directory.
+- GitHub/OpenCart deployment tasks are now routed through the deployment skill in addition to the existing Git/GitHub and OCMOD skills.
 
 ## [0.1.0] - 2026-08-17
 
