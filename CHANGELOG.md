@@ -6,15 +6,21 @@ Openboost uses Semantic Versioning unless a future documented policy replaces it
 
 ## [Unreleased]
 
+No unreleased changes yet.
+
+## [0.2.1] - 2026-08-17
+
 ### Added
 - Repository-boundary policy separating reusable Bootstrap knowledge from experimental operational/runtime tooling.
 
 ### Changed
 - Deployment guidance is retained as reusable architecture, OCMOD lifecycle and safety knowledge without treating one prototype implementation as part of the default Bootstrap runtime.
 - Skill routing now tells agents to extract reusable lessons from experimental branches through a clean branch based on current `main` instead of merging long-running prototype branches wholesale.
+- OCMOD guidance now explicitly standardizes stable canonical `<code>`, separate release `<version>`, safe owned legacy-code cleanup, and full OpenCart 2.3 modification refresh behavior.
+- Release automation now treats a normal `main` push for an already-published root `VERSION` as a successful no-op instead of trying to move an immutable tag.
 
 ### Removed
-- Experimental Python/PHP OpenCart deployment runtime scaffolds from the default Bootstrap branch. Their implementation can remain in a dedicated experimental/tooling branch while reusable rules stay in Openboost skills/docs.
+- Experimental Python/PHP OpenCart deployment runtime scaffolds from the default Bootstrap branch. Their implementation remains suitable for a dedicated experimental/tooling branch while reusable rules stay in Openboost skills/docs.
 
 ## [0.2.0] - 2026-08-17
 
