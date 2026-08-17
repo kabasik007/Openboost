@@ -7,18 +7,38 @@ Openboost uses Semantic Versioning unless a future documented policy replaces it
 ## [Unreleased]
 
 ### Added
-- OpenCart deployment skill covering Git branch monitoring, incremental deployment, backups, health checks and rollback.
-- Reusable local Python deployment agent with Git diff tracking and FTP/FTPS upload of `upload/` contents to the OpenCart root.
-- HMAC-authenticated PHP server bridge for canonical OCMOD upserts, controlled cache actions, audit logging and optional OPcache reset.
-- OpenCart 2.3 OCMOD refresh adapter that rebuilds generated modification files from base, file-based and enabled DB modifications.
-- Reusable per-project deployment configuration and setup documentation.
+- CI validation for deployment templates: Python compile/JSON checks plus PHP lint on PHP 5.6, 7.4 and 8.2.
+- Replay-nonce persistence for signed deploy-bridge requests.
+- Per-file remote backup metadata recording whether the previous remote file existed.
 
 ### Changed
-- OCMOD deployment guidance now requires a stable canonical `<code>` across versions; release version belongs in `<version>` and release metadata instead of changing ownership identity.
-- Legacy versioned OCMOD rows may be cleaned only through explicit anchored owned-code patterns.
-- OpenCart 2.3 deployment guidance treats modification refresh as a full generated-tree rebuild rather than deleting one generated file.
-- Cache invalidation during deploy is modeled as explicit allowlisted profiles instead of blindly deleting every cache directory.
-- GitHub/OpenCart deployment tasks are now routed through the deployment skill in addition to the existing Git/GitHub and OCMOD skills.
+- Local deploy credentials can be read from environment variables instead of being stored directly in project JSON.
+- DB-installer XML discovery no longer treats file-based `system/*.ocmod.xml` as DB installer input by default.
+- Multiple matched installer XML files fail closed unless explicitly allowed.
+- OpenCart 2.3 refresh adapter now follows the platform's normal modification-name ordering and supports renamed admin directories.
+- Server-side Journal/cache profiles ship without guessed paths and must be configured explicitly for the real target site.
+- PHP bridge OCMOD lookup no longer depends on `mysqli_stmt::get_result()`, improving compatibility with legacy hosting without mysqlnd.
+
+## [0.2.0] - 2026-08-17
+
+### Added
+- OpenCart deployment skill for Git-to-server workflows.
+- Local incremental deployment agent with Git diff tracking, FTP/FTPS upload, backups, health checks and deployment state.
+- Signed server-side PHP deployment bridge for privileged OpenCart deployment actions.
+- OpenCart 2.3 OCMOD refresh adapter that rebuilds the generated modification tree instead of deleting a single generated file.
+- Automatic deployment-skill routing for tasks involving branch watching, FTP/FTPS/SFTP, OCMOD installation/update, cache refresh, backup/rollback and server bridges.
+- Reusable `templates/opencart-deploy/` starter package with agent, bridge, project config and documentation.
+- Nonce replay protection for signed deployment bridge requests.
+
+### Changed
+- OCMOD deployment guidance now requires a stable canonical `<code>` while release/version identity belongs in `<version>`, package metadata and Git tags.
+- Legacy versioned OCMOD rows must be cleaned only by explicit owned patterns rather than fuzzy substring deletion.
+- Deployment cache clearing is explicit/profile-driven; template cache profiles ship empty until a real target project's paths are confirmed.
+- Deployment defaults are incremental, reversible and version-adapter based rather than full blind uploads or one-size-fits-all cache deletion.
+
+### Security
+- Deployment bridge calls require signed HMAC requests with timestamp/nonce validation and replay protection.
+- Arbitrary SQL/shell execution and public MySQL exposure are explicitly excluded from the deployment architecture.
 
 ## [0.1.0] - 2026-08-17
 
