@@ -2,8 +2,15 @@ name: Create GitHub Release
 
 on:
   push:
+    branches:
+      - main
     tags:
       - 'v*.*.*'
+    paths:
+      - 'VERSION'
+      - 'CHANGELOG.md'
+      - 'docs/releases/**'
+      - '.github/workflows/release.yml'
 
 permissions:
   contents: write
@@ -15,32 +22,83 @@ jobs:
     steps:
       - name: Checkout release commit
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
-      - name: Verify tag matches VERSION
+      - name: Resolve release version and tag
+        id: release
         shell: bash
         run: |
           set -euo pipefail
+
           VERSION_VALUE="$(tr -d '[:space:]' < VERSION)"
           EXPECTED_TAG="v${VERSION_VALUE}"
 
-          if [ "${GITHUB_REF_NAME}" != "${EXPECTED_TAG}" ]; then
+          if ! grep -Fq "## [${VERSION_VALUE}] -" CHANGELOG.md; then
+            echo "CHANGELOG.md does not contain a finalized ${VERSION_VALUE} release entry."
+            exit 1
+          fi
+
+          if [ "${GITHUB_REF_TYPE}" = "tag" ] && [ "${GITHUB_REF_NAME}" != "${EXPECTED_TAG}" ]; then
             echo "Tag ${GITHUB_REF_NAME} does not match VERSION=${VERSION_VALUE}."
             exit 1
           fi
 
-      - name: Create GitHub Release
+          echo "version=${VERSION_VALUE}" >> "$GITHUB_OUTPUT"
+          echo "tag=${EXPECTED_TAG}" >> "$GITHUB_OUTPUT"
+
+      - name: Create immutable version tag when releasing from main
+        if: github.ref_type == 'branch'
         env:
-          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ steps.release.outputs.tag }}
         shell: bash
         run: |
           set -euo pipefail
 
-          if gh release view "${GITHUB_REF_NAME}" >/dev/null 2>&1; then
-            echo "Release ${GITHUB_REF_NAME} already exists; leaving it unchanged."
+          git fetch --tags origin
+
+          if git rev-parse -q --verify "refs/tags/${RELEASE_TAG}" >/dev/null; then
+            TAG_COMMIT="$(git rev-list -n 1 "${RELEASE_TAG}")"
+
+            if [ "${TAG_COMMIT}" != "${GITHUB_SHA}" ]; then
+              echo "Tag ${RELEASE_TAG} already exists on ${TAG_COMMIT}, not current release commit ${GITHUB_SHA}."
+              exit 1
+            fi
+
+            echo "Tag ${RELEASE_TAG} already exists on this release commit."
             exit 0
           fi
 
-          gh release create "${GITHUB_REF_NAME}" \
-            --verify-tag \
-            --title "Openboost ${GITHUB_REF_NAME}" \
-            --generate-notes
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag -a "${RELEASE_TAG}" -m "Openboost ${RELEASE_TAG}"
+          git push origin "${RELEASE_TAG}"
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ steps.release.outputs.tag }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if gh release view "${RELEASE_TAG}" --repo "${GITHUB_REPOSITORY}" >/dev/null 2>&1; then
+            echo "Release ${RELEASE_TAG} already exists; leaving it unchanged."
+            exit 0
+          fi
+
+          NOTES_FILE="docs/releases/${RELEASE_TAG}.md"
+
+          if [ -f "${NOTES_FILE}" ]; then
+            gh release create "${RELEASE_TAG}" \
+              --repo "${GITHUB_REPOSITORY}" \
+              --verify-tag \
+              --title "Openboost ${RELEASE_TAG}" \
+              --notes-file "${NOTES_FILE}"
+          else
+            gh release create "${RELEASE_TAG}" \
+              --repo "${GITHUB_REPOSITORY}" \
+              --verify-tag \
+              --title "Openboost ${RELEASE_TAG}" \
+              --generate-notes
+          fi
