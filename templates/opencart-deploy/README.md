@@ -41,9 +41,10 @@ The deployer maps the **contents** of `upload/` to the OpenCart root.
 
 Do not set `remote_root` to `/upload` unless the actual OpenCart installation itself lives there.
 
-Set the bridge secret in the local environment instead of Git:
+Keep credentials out of Git. The example reads both secrets from environment variables:
 
 ```powershell
+$env:OPENBOOST_FTP_PASSWORD="ftp-password"
 $env:OPENBOOST_DEPLOY_SECRET="a-long-random-secret"
 ```
 
@@ -70,10 +71,13 @@ Edit the `$CONFIG` block in `server_bridge.php`:
 
 - random `shared_secret` matching the local environment secret;
 - real OpenCart storefront `config.php` path;
+- real `admin_dir` when the admin folder was renamed;
 - allowed module code prefixes;
-- audit log location;
-- cache profiles with project-specific paths;
+- audit log and nonce-cache locations;
+- cache profiles with **project-specific exact paths**;
 - OCMOD refresh adapter path.
+
+The starter intentionally ships Journal cache profiles with no paths. Do not replace those placeholders with a guessed universal cache directory. Inspect the real Journal/OpenCart installation first.
 
 For production:
 
@@ -83,6 +87,8 @@ For production:
 - do not store the bridge secret in the Git repository;
 - do not enable arbitrary command execution;
 - keep OPcache reset disabled unless actually required.
+
+The bridge rejects stale timestamps and replayed nonces inside the configured window.
 
 ## 3. Stable OCMOD code
 
@@ -127,15 +133,32 @@ git diff --name-status OLD..NEW
 
 Only changed files inside configured `upload/` are transferred.
 
-Before overwrite/delete the agent tries to download the current remote file into `.deploy-backups/`.
+Before overwrite/delete the agent tries to download the current remote file into `.deploy-backups/` and records whether that remote file previously existed.
 
 Remote deletion is disabled by default. Enable `allow_remote_delete` only after confirming the project expects Git deletions to remove production files.
 
 The state SHA is advanced only after upload, bridge actions and health check succeed.
 
-## 5. Installer XML
+## 5. Installer XML vs file-based OCMOD
 
-Installer XML paths are configurable. They are detected separately from deployable web files.
+Installer XML paths are configurable and are detected separately from deployable web files.
+
+The default DB-installer candidates are only:
+
+```text
+install.xml
+install.ocmod.xml
+```
+
+A file such as:
+
+```text
+upload/system/my_module.ocmod.xml
+```
+
+is a normal file-based OCMOD source and should remain in the `upload/` tree; do not also import it into the DB unless the target project explicitly uses that architecture.
+
+If multiple installer XML files match, the local agent refuses the deployment by default rather than sequentially overwriting one canonical DB modification. Configure one exact installer path whenever possible.
 
 When installer XML changed:
 
@@ -152,6 +175,8 @@ full OCMOD rebuild
 ```
 
 Do not merely delete one generated file from `system/storage/modification`. OpenCart 2.3's own refresh lifecycle clears and rebuilds the generated tree from all enabled modification sources.
+
+The 2.3 starter adapter follows the platform's normal DB modification name ordering and supports a configurable renamed admin directory. If a store relies on unusual OCMOD edge cases, validate against the exact OpenCart fork before production auto-deploy.
 
 ## 6. Cache profiles
 
@@ -185,3 +210,5 @@ Use separate project JSON files and separate bridge secrets for staging and prod
 The local starter supports FTP and FTPS with Python's standard library. Add an SFTP transport adapter (for example Paramiko) when the server supports SSH/SFTP; SFTP is preferable to plain FTP.
 
 The included OCMOD refresh adapter targets OpenCart 2.3-style modification XML/lifecycle. OpenCart 3/4 should use their own tested adapters instead of silently reusing 2.3 behavior.
+
+Automatic file restore/OCMOD rollback is not yet exposed as a one-command CLI operation in this starter. The agent records pre-overwrite backups and deployment metadata so a later rollback command can be added without redesigning the state format.
